@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../app_colors.dart';
-import '../api_service.dart';
-import 'Login.dart';
-import 'DashboardScreen.dart';
+import '../controllers/auth_controller.dart';
 import 'AiWasteInputScreen.dart';
-import 'WasteGuideScreen.dart';
 import 'CollectionScheduleScreen.dart';
+import 'DashboardScreen.dart';
 import 'NotificationScreen.dart';
 import 'ProfileScreen.dart';
+import 'WasteGuideScreen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
 
-  const MainScreen({
-    super.key,
-    this.userName = '',
-    this.userEmail = '',
-  });
+  const MainScreen({super.key, this.userName = '', this.userEmail = ''});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -26,8 +22,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-
-  final List<DrawerItem> _drawerItems = [
+  static const List<DrawerItem> _drawerItems = [
     DrawerItem(icon: Icons.dashboard_rounded, title: 'Dashboard'),
     DrawerItem(icon: Icons.auto_awesome_rounded, title: 'AI Waste Input'),
     DrawerItem(icon: Icons.menu_book_rounded, title: 'Waste Guide'),
@@ -36,7 +31,7 @@ class _MainScreenState extends State<MainScreen> {
     DrawerItem(icon: Icons.person_rounded, title: 'Profile'),
   ];
 
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = [
     DashboardScreen(),
     AiWasteInputScreen(),
     WasteGuideScreen(),
@@ -52,11 +47,7 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         title: Text(
           _drawerItems[_selectedIndex].title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
         ),
         backgroundColor: AppColors.primary,
         elevation: 0,
@@ -80,10 +71,7 @@ class _MainScreenState extends State<MainScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primaryDark,
-                    ],
+                    colors: [AppColors.primary, AppColors.primaryDark],
                   ),
                 ),
                 child: SafeArea(
@@ -96,38 +84,26 @@ class _MainScreenState extends State<MainScreen> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.recycling,
-                            color: Colors.white,
-                            size: 36,
-                          ),
+                          child: const Icon(Icons.recycling, color: Colors.white, size: 36),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           widget.userName.isNotEmpty ? widget.userName : 'WasteWise',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           widget.userEmail,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-
               // Drawer Navigation Items
               Expanded(
                 child: ListView.builder(
@@ -137,20 +113,13 @@ class _MainScreenState extends State<MainScreen> {
                     final item = _drawerItems[index];
                     final isSelected = _selectedIndex == index;
                     return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 2,
-                      ),
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                       decoration: BoxDecoration(
                         color: isSelected ? AppColors.lightBg : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ListTile(
-                        leading: Icon(
-                          item.icon,
-                          color: isSelected ? AppColors.primary : Colors.grey[600],
-                          size: 24,
-                        ),
+                        leading: Icon(item.icon, color: isSelected ? AppColors.primary : Colors.grey[600], size: 24),
                         title: Text(
                           item.title,
                           style: TextStyle(
@@ -169,13 +138,9 @@ class _MainScreenState extends State<MainScreen> {
                                 ),
                               )
                             : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () {
-                          setState(() {
-                            _selectedIndex = index;
-                          });
+                          setState(() => _selectedIndex = index);
                           Navigator.pop(context);
                         },
                       ),
@@ -183,7 +148,6 @@ class _MainScreenState extends State<MainScreen> {
                   },
                 ),
               ),
-
               // Logout Button
               const Divider(height: 1, color: Color(0xFFE0E0E0)),
               Padding(
@@ -192,24 +156,13 @@ class _MainScreenState extends State<MainScreen> {
                   leading: Icon(Icons.logout_rounded, color: Colors.red[400], size: 24),
                   title: Text(
                     'Logout',
-                    style: TextStyle(
-                      color: Colors.red[400],
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.w500, fontSize: 15),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
-                    await ApiService.clearSession();
+                    await AuthController.instance.logout();
                     if (!context.mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                      (route) => false,
-                    );
+                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                   },
                 ),
               ),

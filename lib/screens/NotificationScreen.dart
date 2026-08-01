@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../app_colors.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
-
 
   @override
   Widget build(BuildContext context) {
@@ -18,20 +18,12 @@ class NotificationScreen extends StatelessWidget {
               color: AppColors.lightBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.notifications_rounded,
-              color: AppColors.primary,
-              size: 48,
-            ),
+            child: const Icon(Icons.notifications_rounded, color: AppColors.primary, size: 48),
           ),
           const SizedBox(height: 16),
           const Text(
             'Notifications',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Text(

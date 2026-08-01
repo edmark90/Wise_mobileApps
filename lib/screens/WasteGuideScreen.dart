@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../app_colors.dart';
 
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
-
+class WasteGuideScreen extends StatelessWidget {
+  const WasteGuideScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,24 +18,16 @@ class DashboardScreen extends StatelessWidget {
               color: AppColors.lightBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.dashboard_rounded,
-              color: AppColors.primary,
-              size: 48,
-            ),
+            child: const Icon(Icons.menu_book_rounded, color: AppColors.primary, size: 48),
           ),
           const SizedBox(height: 16),
           const Text(
-            'Dashboard',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            'Waste Guide',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your waste management overview',
+            'Learn proper waste sorting',
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],

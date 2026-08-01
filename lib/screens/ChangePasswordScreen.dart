@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../app_colors.dart';
-import '../api_service.dart';
 
+import '../app_colors.dart';
+import '../controllers/profile_controller.dart';
+
+/// Change Password view (MVC View). The mutation is delegated to
+/// [ProfileController] (no caching — password changes always hit the server).
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -17,6 +20,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
+
+  final ProfileController _controller = ProfileController.instance;
 
   @override
   void dispose() {
@@ -46,7 +51,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await ApiService.changePassword(
+      await _controller.changePassword(
         currentPassword: current,
         newPassword: newPassword,
         confirmPassword: confirm,

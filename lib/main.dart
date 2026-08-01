@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
-import 'api_service.dart';
-import 'screen/Login.dart';
-import 'screen/MainScreen.dart';
+import 'controllers/auth_controller.dart';
+import 'screens/Login.dart';
+import 'screens/MainScreen.dart';
 
 void main() {
   runApp(const WasteWiseApp());
@@ -21,7 +22,25 @@ class WasteWiseApp extends StatelessWidget {
         primaryColor: AppColors.primary,
         fontFamily: 'Roboto',
       ),
+      routes: {
+        '/home': (_) => const _HomeScreen(),
+        '/login': (_) => const LoginScreen(),
+      },
       home: const _AuthGate(),
+    );
+  }
+}
+
+/// Builds [MainScreen] from the session held by [AuthController].
+class _HomeScreen extends StatelessWidget {
+  const _HomeScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final session = AuthController.instance.session;
+    return MainScreen(
+      userName: session?['fullname'] ?? '',
+      userEmail: session?['email'] ?? '',
     );
   }
 }
@@ -36,47 +55,32 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  bool _checked = false;
-  Map<String, String>? _session;
+  final AuthController _auth = AuthController.instance;
 
   @override
   void initState() {
     super.initState();
-    _restoreSession();
-  }
-
-  Future<void> _restoreSession() async {
-    var session = await ApiService.loadSession();
-    final role = (session?['role'] ?? 'citizen').toLowerCase();
-    if (role != 'citizen') {
-      await ApiService.clearSession();
-      session = null;
-    }
-    if (!mounted) return;
-    setState(() {
-      _session = session;
-      _checked = true;
-    });
+    _auth.restoreSession();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_checked) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
-
-    final s = _session;
-    if (s != null) {
-      return MainScreen(
-        userName: s['fullname'] ?? '',
-        userEmail: s['email'] ?? '',
-      );
-    }
-    return const LoginScreen();
+    return ListenableBuilder(
+      listenable: _auth,
+      builder: (context, _) {
+        if (_auth.isRestoring) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          );
+        }
+        if (_auth.isLoggedIn) {
+          return const _HomeScreen();
+        }
+        return const LoginScreen();
+      },
+    );
   }
 }
