@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/cache/swr_cache.dart';
 import '../models/auth_result.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 
 /// Controller for authentication flow and session state.
 ///
@@ -39,6 +42,9 @@ class AuthController extends ChangeNotifier {
         session = null;
       }
       _session = session;
+      if (_session != null) {
+        unawaited(PushNotificationService.instance.registerAfterLogin());
+      }
     } catch (_) {
       _session = null;
     } finally {
@@ -60,6 +66,7 @@ class AuthController extends ChangeNotifier {
         'email': (result.user['email'] ?? '').toString(),
         'role': (result.user['role'] ?? 'citizen').toString(),
       };
+      unawaited(PushNotificationService.instance.registerAfterLogin());
       return result;
     } finally {
       _busy = false;
@@ -89,6 +96,7 @@ class AuthController extends ChangeNotifier {
         'email': (result.user['email'] ?? '').toString(),
         'role': (result.user['role'] ?? 'citizen').toString(),
       };
+      unawaited(PushNotificationService.instance.registerAfterLogin());
       return result;
     } finally {
       _busy = false;
@@ -100,6 +108,7 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() async {
     await AuthService.instance.clearSession();
     await SwrCache.instance.clearAll();
+    PushNotificationService.instance.reset();
     _session = null;
     notifyListeners();
   }

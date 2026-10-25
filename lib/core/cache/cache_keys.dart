@@ -8,4 +8,7 @@ abstract final class CacheKeys {
 
   /// Current user's profile.
   static const String profile = 'user_profile';
+
+  /// The citizen's notification inbox.
+  static const String notifications = 'notifications';
 }

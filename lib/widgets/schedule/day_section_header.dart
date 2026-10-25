@@ -45,10 +45,14 @@ class DaySectionHeader extends StatelessWidget {
             ),
             child: Icon(_icon, color: color, size: 18),
           ),
-          const SizedBox(width: 10),
-          Text(
-            label,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color),
+            ),
           ),
           const SizedBox(width: 8),
           Container(

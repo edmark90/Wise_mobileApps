@@ -36,8 +36,11 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
 
   void _showScheduleDetail(CollectionSchedule schedule) {
     final all = _controller.state?.data ?? const <CollectionSchedule>[];
-    final sameDaySchedules = all
-        .where((s) => s.collectionDate == schedule.collectionDate)
+    // Filter stops belonging to the same assignment or same truck on that date
+    final sameAssignmentSchedules = all
+        .where((s) =>
+            s.collectionDate == schedule.collectionDate &&
+            (schedule.truckNumber.isEmpty || s.truckNumber == schedule.truckNumber))
         .toList()
       ..sort((a, b) => a.collectionTime.compareTo(b.collectionTime));
 
@@ -47,7 +50,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => ScheduleDetailSheet(
         schedule: schedule,
-        allSchedules: sameDaySchedules,
+        allSchedules: sameAssignmentSchedules.isNotEmpty ? sameAssignmentSchedules : [schedule],
       ),
     );
   }

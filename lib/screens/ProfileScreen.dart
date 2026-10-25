@@ -211,6 +211,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
+          // Get zones for selected barangay
+          final zonesForBarangay = barangay != null
+              ? (AppConstants.zonesByBarangay[barangay] ?? AppConstants.defaultZones)
+              : <String>[];
+
+          // Reset zone if not in the new barangay's zones
+          if (zone != null && !zonesForBarangay.contains(zone)) {
+            zone = null;
+          }
+
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: SingleChildScrollView(
@@ -263,20 +273,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     hint: 'Select barangay',
                     value: barangay,
                     items: AppConstants.barangays,
-                    onChanged: (v) => setSheetState(() => barangay = v),
+                    onChanged: (v) => setSheetState(() {
+                      barangay = v;
+                      zone = null; // Reset zone when barangay changes
+                    }),
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Zone',
+                    'Zone / Street',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 8),
-                  _dropdown<String>(
-                    hint: 'Select zone',
-                    value: zone,
-                    items: AppConstants.zones,
-                    onChanged: (v) => setSheetState(() => zone = v),
-                  ),
+                  if (barangay == null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Select a barangay first',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    )
+                  else
+                    _dropdown<String>(
+                      hint: 'Select zone',
+                      value: zone,
+                      items: zonesForBarangay,
+                      onChanged: (v) => setSheetState(() => zone = v),
+                    ),
                   const SizedBox(height: 22),
                   SizedBox(
                     width: double.infinity,

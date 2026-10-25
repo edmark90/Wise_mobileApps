@@ -43,7 +43,7 @@ class SyncBanner extends StatelessWidget {
             Flexible(
               child: Text(
                 isOffline
-                    ? 'Offline — showing saved data'
+                    ? 'Just wait, starting the server…'
                     : 'Syncing…',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

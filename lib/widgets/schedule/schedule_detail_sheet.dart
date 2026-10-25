@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 import '../../models/collection_schedule.dart';
-import 'route_journey_view.dart';
+import 'status_timeline.dart';
 
-/// Bottom sheet with full details of a collection route plus the day's
-/// route journey preview.
+/// Bottom sheet with full details of a collection route assignment plus its collection stops list.
 class ScheduleDetailSheet extends StatelessWidget {
   final CollectionSchedule schedule;
   final List<CollectionSchedule> allSchedules;
@@ -16,22 +15,21 @@ class ScheduleDetailSheet extends StatelessWidget {
     required this.allSchedules,
   });
 
-  Color _zoneColor(String zone) {
-    switch (zone) {
-      case 'Zone 1': return const Color(0xFF16A34A);
-      case 'Zone 2': return const Color(0xFF3B82F6);
-      case 'Zone 3': return const Color(0xFFF59E0B);
-      case 'Zone 4': return const Color(0xFF8B5CF6);
-      case 'Zone 5': return const Color(0xFFEC4899);
-      default: return const Color(0xFF6B7280);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final zoneColor = _zoneColor(schedule.zone);
-    final index = allSchedules.indexOf(schedule);
-    final routeStops = allSchedules.map((s) => s.barangay).toList();
+    final stopsList = schedule.stops.isNotEmpty
+        ? schedule.stops
+        : [
+            CollectionStop(
+              id: 0,
+              scheduleId: schedule.id,
+              barangay: schedule.barangay,
+              street: schedule.zone,
+              sequence: 1,
+              collectionTime: schedule.collectionTime,
+              status: schedule.status,
+            )
+          ];
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -61,247 +59,345 @@ class ScheduleDetailSheet extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: schedule.statusBgColor,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
-                    Icons.calendar_today_rounded,
+                    Icons.local_shipping_rounded,
                     color: schedule.statusColor,
-                    size: 22,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'COLLECTION ROUTE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        schedule.barangay,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      Row(
+                        children: [
+                          const Text(
+                            'COLLECTION ASSIGNMENT',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          if (schedule.truckNumber.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                              ),
+                              child: Text(
+                                schedule.truckNumber,
+                                style: const TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
+                        schedule.routeName?.isNotEmpty == true
+                            ? schedule.routeName!
+                            : '${schedule.barangay} Route',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
                         schedule.formattedDate,
-                        style: TextStyle(fontSize: 12.5, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: schedule.statusBgColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    schedule.status,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: schedule.statusColor,
-                    ),
-                  ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                  color: Colors.grey[400],
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 24, indent: 20, endIndent: 20),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
 
+          // Body
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Info cards row
-                  Row(
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                // Status timeline
+                StatusTimeline(schedule: schedule),
+                const SizedBox(height: 20),
+
+                // Info Cards Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _infoCard(
+                        icon: Icons.local_shipping_outlined,
+                        iconColor: const Color(0xFF2563EB),
+                        label: 'TRUCK',
+                        value: schedule.truckNumber.isNotEmpty ? schedule.truckNumber : 'Standard Fleet',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _infoCard(
+                        icon: Icons.person_outline_rounded,
+                        iconColor: const Color(0xFF7C3AED),
+                        label: 'PERSONNEL',
+                        value: schedule.assignedPersonnel.isNotEmpty ? schedule.assignedPersonnel : 'Unassigned',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Collection Stops Ordered List with Individual Times
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InfoCard(
-                        icon: Icons.access_time_rounded,
-                        label: 'Time',
-                        value: schedule.formattedTime,
-                        color: const Color(0xFF3B82F6),
-                      ),
-                      const SizedBox(width: 10),
-                      _InfoCard(
-                        icon: Icons.location_on_rounded,
-                        label: 'Zone',
-                        value: schedule.zone.isEmpty ? 'N/A' : schedule.zone,
-                        color: zoneColor,
-                      ),
-                      const SizedBox(width: 10),
-                      _InfoCard(
-                        icon: Icons.person_outline,
-                        label: 'Personnel',
-                        value: schedule.assignedPersonnel.isEmpty ? 'N/A' : schedule.assignedPersonnel,
-                        color: const Color(0xFF8B5CF6),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Route preview title
-                  Row(
-                    children: [
-                      const Icon(Icons.route_rounded, color: AppColors.primary, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Route Preview',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${routeStops.length} stop${routeStops.length > 1 ? 's' : ''}',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  RouteJourneyView(
-                    stops: allSchedules,
-                    currentIndex: index,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // All routes for the day
-                  const Text(
-                    'All Routes Today',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 10),
-                  ...List.generate(allSchedules.length, (i) {
-                    final s = allSchedules[i];
-                    final isCurrent = i == index;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isCurrent ? AppColors.primary.withValues(alpha: 0.05) : Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isCurrent ? AppColors.primary.withValues(alpha: 0.3) : const Color(0xFFE5E7EB),
-                        ),
-                      ),
-                      child: Row(
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: isCurrent ? AppColors.primary : Colors.grey[200],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${i + 1}',
+                          Row(
+                            children: [
+                              const Icon(Icons.format_list_numbered_rounded, size: 16, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Collection Stops & Schedule',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: isCurrent ? Colors.white : Colors.grey[600],
+                                  color: Color(0xFF1E293B),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.barangay,
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
-                                ),
-                                Text(
-                                  '${s.formattedTime} • ${s.zone.isEmpty ? 'No zone' : s.zone}',
-                                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: s.statusBgColor,
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              s.status,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: s.statusColor),
+                              '${stopsList.length} Stop${stopsList.length > 1 ? 's' : ''}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }),
+                      const SizedBox(height: 12),
+                      ...stopsList.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final stop = entry.value;
+                        final isFirst = idx == 0;
+                        final isLast = idx == stopsList.length - 1;
+                        final timeDisplay = stop.formattedTime.isNotEmpty ? stop.formattedTime : schedule.formattedTime;
 
-                  const SizedBox(height: 30),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: isFirst
+                                      ? AppColors.primary
+                                      : (isLast ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${idx + 1}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          stop.barangay,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        if (isFirst) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFDCFCE7),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text('START', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
+                                          ),
+                                        ],
+                                        if (isLast && stopsList.length > 1) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFDBEAFE),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text('END', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    if (stop.street.isNotEmpty)
+                                      Text(
+                                        stop.street,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (timeDisplay.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.access_time_rounded, size: 11, color: Color(0xFF1D4ED8)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        timeDisplay,
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1D4ED8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+
+                if (schedule.remarks?.isNotEmpty == true) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF475569)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            schedule.remarks!,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _InfoCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-            ),
-          ],
-        ),
+  Widget _infoCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

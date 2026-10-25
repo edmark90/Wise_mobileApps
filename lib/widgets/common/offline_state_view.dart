@@ -24,16 +24,17 @@ class OfflineStateView extends StatelessWidget {
                 color: Color(0xFFEFF6FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.cloud_off_rounded, color: AppColors.primary, size: 40),
+              child: const CircularProgressIndicator(color: AppColors.primary),
             ),
             const SizedBox(height: 16),
             const Text(
-              'You are offline',
+              'Just wait, starting the server…',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
             const SizedBox(height: 8),
             Text(
-              message ?? 'No cached data available.\nConnect to the internet and try again.',
+              message ??
+                  'The Render server is waking up.\nThis can take 30-60 seconds.\nPull to refresh or retry to check again.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4),
             ),

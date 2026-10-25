@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
+import '../config/app_config.dart';
 import 'network_exception.dart';
 
 /// Thin HTTP wrapper around `package:http`.
@@ -16,10 +18,12 @@ class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
 
-  static const String baseUrl = 'http://192.168.1.34:8000/api';
+  /// API base URL (includes the `/api` prefix). Derives from [AppConfig] so
+  /// the backend URL is centralized in exactly one place.
+  static String get baseUrl => '${AppConfig.apiBaseUrl}/api';
 
   /// Base host used to build absolute URLs for static files (profile images).
-  static String get staticBaseUrl => baseUrl.substring(0, baseUrl.length - 4);
+  static String get staticBaseUrl => AppConfig.apiBaseUrl;
 
   static const Duration _timeout = Duration(seconds: 20);
 
@@ -46,6 +50,20 @@ class ApiClient {
         () => http.get(_uri(path, query), headers: _headers).timeout(_timeout),
       );
 
+  /// Send a GET to a path on the API *root* (outside the `/api` namespace).
+  ///
+  /// Used by infrastructure endpoints such as `/health` and `/model/info`
+  /// that the backend exposes at the root rather than under `/api`.
+  Future<http.Response> getRoot(String path, {Map<String, String>? query}) => _guard(
+        () async {
+          var uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
+          if (query != null && query.isNotEmpty) {
+            uri = uri.replace(queryParameters: query);
+          }
+          return http.get(uri, headers: _headers).timeout(_timeout);
+        },
+      );
+
   Future<http.Response> post(String path, {Object? body}) => _guard(
         () => http.post(_uri(path), headers: _headers, body: jsonEncode(body)).timeout(_timeout),
       );
@@ -58,16 +76,30 @@ class ApiClient {
         () => http.delete(_uri(path), headers: _headers).timeout(_timeout),
       );
 
-  /// Send a multipart file upload (used for profile photos).
+  /// Send a multipart file upload (used for profile photos and AI prediction).
+  ///
+  /// Always attaches an explicit [MediaType] so the backend never sees
+  /// `application/octet-stream`. Defaults to `image/jpeg`; pass [contentType]
+  /// to override (e.g. `image/png`).
   Future<http.Response> multipart(
     String path, {
     required String field,
     required List<int> bytes,
     required String filename,
+    MediaType? contentType,
   }) async {
+    // Infer MIME from file extension when not provided explicitly
+    final resolved = contentType ?? _mimeForFilename(filename);
     final request = http.MultipartRequest('POST', _uri(path))
       ..headers['Authorization'] = 'Bearer $_token'
-      ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: resolved,
+        ),
+      );
 
     try {
       final streamed = await request.send().timeout(_timeout);
@@ -80,6 +112,19 @@ class ApiClient {
     } on http.ClientException {
       throw const NetworkException('Could not reach the server.');
     }
+  }
+
+  /// Infer a proper image [MediaType] from a file extension.
+  /// Falls back to `image/jpeg` for anything unrecognised.
+  static MediaType _mimeForFilename(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    return switch (ext) {
+      'png'  => MediaType('image', 'png'),
+      'webp' => MediaType('image', 'webp'),
+      'gif'  => MediaType('image', 'gif'),
+      'heic' => MediaType('image', 'heic'),
+      _      => MediaType('image', 'jpeg'), // jpg / jpeg / everything else
+    };
   }
 
   // ---------------------------------------------------------------------

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 2.0.0+9
 
 environment:
   sdk: ^3.11.0
@@ -35,11 +35,18 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.2.0
+  http_parser: ^4.0.0
   shared_preferences: ^2.5.5
   image_picker: ^1.2.3
   image: ^4.9.1
   cached_network_image: ^3.4.1
   connectivity_plus: ^7.3.1
+  firebase_core: ^4.12.1
+  firebase_messaging: ^16.4.3
+  flutter_local_notifications: ^22.2.0
+  url_launcher: ^6.3.0
+  package_info_plus: ^8.0.0
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:
@@ -56,12 +63,24 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
+
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "asset/logowise.png"
+  min_sdk_android: 21
+
 flutter:
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - asset/logowise.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

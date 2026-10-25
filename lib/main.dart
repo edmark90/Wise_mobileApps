@@ -2,11 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'controllers/auth_controller.dart';
+import 'core/config/app_config.dart';
 import 'screens/Login.dart';
 import 'screens/MainScreen.dart';
 
-void main() {
+import 'package:flutter/services.dart';
+
+// Global navigator key for deep linking from push notifications
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Auto-pick the backend: local FastAPI server in debug when reachable,
+  // otherwise the production Render URL.
+  AppConfig.setCustomUrl(await AppConfig.resolveAutoBaseUrl());
   runApp(const WasteWiseApp());
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.immersiveSticky,
+  );
 }
 
 class WasteWiseApp extends StatelessWidget {
@@ -15,6 +28,7 @@ class WasteWiseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'WasteWise',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -69,10 +83,22 @@ class _AuthGateState extends State<_AuthGate> {
       listenable: _auth,
       builder: (context, _) {
         if (_auth.isRestoring) {
-          return const Scaffold(
+          return Scaffold(
             backgroundColor: Colors.white,
             body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'asset/logowise.png',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 20),
+                  const CircularProgressIndicator(color: AppColors.primary),
+                ],
+              ),
             ),
           );
         }

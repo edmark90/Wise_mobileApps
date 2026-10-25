@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app_colors.dart';
 import '../../models/collection_schedule.dart';
 
-/// Single collection route card with a timeline bar.
+/// Single collection route assignment card with a timeline bar, truck identification, and stops.
 class ScheduleCard extends StatelessWidget {
   final CollectionSchedule schedule;
   final int cardIndex;
@@ -18,25 +18,15 @@ class ScheduleCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color _zoneColor(String zone) {
-    switch (zone) {
-      case 'Zone 1': return const Color(0xFF16A34A);
-      case 'Zone 2': return const Color(0xFF3B82F6);
-      case 'Zone 3': return const Color(0xFFF59E0B);
-      case 'Zone 4': return const Color(0xFF8B5CF6);
-      case 'Zone 5': return const Color(0xFFEC4899);
-      default: return const Color(0xFF6B7280);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final zoneColor = _zoneColor(schedule.zone);
     final isFirst = cardIndex == 0;
     final isLast = cardIndex == totalInGroup - 1;
+    final hasStops = schedule.stops.isNotEmpty;
+    final stopsCount = hasStops ? schedule.stops.length : 1;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 16),
+      padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -83,11 +73,11 @@ class ScheduleCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        schedule.formattedTime.split(' ')[0],
+                        schedule.formattedTime.split(' ').first,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                       Text(
-                        schedule.formattedTime.split(' ')[1],
+                        schedule.formattedTime.split(' ').length > 1 ? schedule.formattedTime.split(' ').last : '',
                         style: TextStyle(fontSize: 9, color: Colors.grey[500]),
                       ),
                     ],
@@ -97,9 +87,9 @@ class ScheduleCard extends StatelessWidget {
                 // Vertical divider
                 Container(
                   width: 1,
-                  height: 32,
+                  height: 38,
                   color: Colors.grey[200],
-                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  margin: const EdgeInsets.symmetric(vertical: 10),
                 ),
                 const SizedBox(width: 10),
                 // Content
@@ -111,21 +101,56 @@ class ScheduleCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Expanded(
+                            Flexible(
                               child: Text(
-                                schedule.barangay,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                                schedule.routeName?.isNotEmpty == true
+                                    ? schedule.routeName!
+                                    : '${schedule.barangay} Route',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 6),
+                            if (schedule.truckNumber.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.local_shipping_rounded, size: 10, color: Color(0xFF1D4ED8)),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      schedule.truckNumber,
+                                      style: const TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1D4ED8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: schedule.statusBgColor,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 schedule.status,
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: schedule.statusColor),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: schedule.statusColor,
+                                ),
                               ),
                             ),
                           ],
@@ -133,31 +158,40 @@ class ScheduleCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.location_on_rounded, size: 12, color: zoneColor),
-                            const SizedBox(width: 3),
-                            Text(
-                              schedule.zone.isEmpty ? 'No zone' : schedule.zone,
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                            if (schedule.assignedPersonnel.isNotEmpty) ...[
-                              const SizedBox(width: 10),
-                              Icon(Icons.person_outline, size: 12, color: Colors.grey[500]),
-                              const SizedBox(width: 3),
-                              Text(
-                                schedule.assignedPersonnel,
+                            Icon(Icons.pin_drop_rounded, size: 12, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                hasStops
+                                    ? '${stopsCount} Stop${stopsCount > 1 ? 's' : ''}: ${schedule.stops.map((s) => s.barangay + (s.street.isNotEmpty ? " (${s.street})" : "")).join(" • ")}'
+                                    : schedule.barangay + (schedule.zone.isNotEmpty ? ' - ${schedule.zone}' : ''),
                                 style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
+                            ),
                           ],
                         ),
+                        if (schedule.assignedPersonnel.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey[400]),
+                              const SizedBox(width: 4),
+                              Text(
+                                schedule.assignedPersonnel,
+                                style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: 18),
-                ),
+                const SizedBox(width: 8),
               ],
             ),
           ),

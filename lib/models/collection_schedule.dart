@@ -1,35 +1,35 @@
 import 'dart:ui' show Color;
 
-/// A collection route/schedule returned by the API.
-class CollectionSchedule {
+/// A single collection stop inside a truck's collection assignment with its own collection time.
+class CollectionStop {
   final int id;
+  final int scheduleId;
   final String barangay;
-  final String zone;
-  final String collectionDate;
+  final String street;
+  final int sequence;
   final String collectionTime;
-  final String assignedPersonnel;
   final String status;
   final String? remarks;
 
-  const CollectionSchedule({
+  const CollectionStop({
     required this.id,
+    required this.scheduleId,
     required this.barangay,
-    required this.zone,
-    required this.collectionDate,
-    required this.collectionTime,
-    required this.assignedPersonnel,
-    required this.status,
+    this.street = '',
+    this.sequence = 1,
+    this.collectionTime = '',
+    this.status = 'Upcoming',
     this.remarks,
   });
 
-  factory CollectionSchedule.fromJson(Map<String, dynamic> json) {
-    return CollectionSchedule(
+  factory CollectionStop.fromJson(Map<String, dynamic> json) {
+    return CollectionStop(
       id: json['id'] ?? 0,
+      scheduleId: json['schedule_id'] ?? 0,
       barangay: json['barangay'] ?? '',
-      zone: json['zone'] ?? '',
-      collectionDate: json['collection_date'] ?? '',
+      street: json['street'] ?? '',
+      sequence: json['sequence'] ?? 1,
       collectionTime: json['collection_time'] ?? '',
-      assignedPersonnel: json['assigned_personnel'] ?? '',
       status: json['status'] ?? 'Upcoming',
       remarks: json['remarks'],
     );
@@ -37,11 +37,11 @@ class CollectionSchedule {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'schedule_id': scheduleId,
         'barangay': barangay,
-        'zone': zone,
-        'collection_date': collectionDate,
+        'street': street,
+        'sequence': sequence,
         'collection_time': collectionTime,
-        'assigned_personnel': assignedPersonnel,
         'status': status,
         'remarks': remarks,
       };
@@ -54,7 +54,86 @@ class CollectionSchedule {
     final m = parts[1];
     final ampm = h >= 12 ? 'PM' : 'AM';
     final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '$h12:$m $ampm';
+    return '${h12}:${m} ${ampm}';
+  }
+}
+
+/// A collection route/schedule assignment returned by the API.
+class CollectionSchedule {
+  final int id;
+  final String barangay;
+  final String zone;
+  final String collectionDate;
+  final String collectionTime;
+  final String assignedPersonnel;
+  final String truckNumber;
+  final String? routeName;
+  final String? startingPoint;
+  final String status;
+  final String? remarks;
+  final List<CollectionStop> stops;
+
+  const CollectionSchedule({
+    required this.id,
+    required this.barangay,
+    required this.zone,
+    required this.collectionDate,
+    required this.collectionTime,
+    required this.assignedPersonnel,
+    this.truckNumber = '',
+    this.routeName,
+    this.startingPoint,
+    required this.status,
+    this.remarks,
+    this.stops = const [],
+  });
+
+  factory CollectionSchedule.fromJson(Map<String, dynamic> json) {
+    final rawStops = json['stops'] as List<dynamic>?;
+    final parsedStops = rawStops != null
+        ? rawStops.map((s) => CollectionStop.fromJson(s as Map<String, dynamic>)).toList()
+        : <CollectionStop>[];
+
+    return CollectionSchedule(
+      id: json['id'] ?? 0,
+      barangay: json['barangay'] ?? '',
+      zone: json['zone'] ?? '',
+      collectionDate: json['collection_date'] ?? '',
+      collectionTime: json['collection_time'] ?? '',
+      assignedPersonnel: json['assigned_personnel'] ?? '',
+      truckNumber: json['truck_number'] ?? json['truck'] ?? '',
+      routeName: json['route_name'] ?? json['route'],
+      startingPoint: json['starting_point'],
+      status: json['status'] ?? 'Upcoming',
+      remarks: json['remarks'],
+      stops: parsedStops,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'barangay': barangay,
+        'zone': zone,
+        'collection_date': collectionDate,
+        'collection_time': collectionTime,
+        'assigned_personnel': assignedPersonnel,
+        'truck_number': truckNumber,
+        if (routeName != null) 'route_name': routeName,
+        if (startingPoint != null) 'starting_point': startingPoint,
+        'status': status,
+        'remarks': remarks,
+        'stops': stops.map((s) => s.toJson()).toList(),
+      };
+
+  String get formattedTime {
+    if (collectionTime.isEmpty) return '';
+    final parts = collectionTime.split(':');
+    if (parts.length < 2) return collectionTime;
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = parts[1];
+    final ampm = h >= 12 ? 'PM' : 'AM';
+    final h12 = h % 12 == 0 ? 12 : h % 12;
+    return '${h12}:${m} ${ampm}';
   }
 
   String get formattedDate {

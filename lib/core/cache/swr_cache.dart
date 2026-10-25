@@ -75,7 +75,11 @@ class _Entry<T> {
   T? data;
   String? encoded;
   DateTime? cachedAt;
-  SwrState<T>? state;
+
+  // Stored loosely (type-erased) so writes never fail with a runtime generic
+  // mismatch when the entry is read back from the `Map<String, _Entry<dynamic>>`
+  // store. Reads reconstruct the properly-typed [SwrState] via [_typedState].
+  SwrState<dynamic>? state;
 
   // Retained so the cache can revalidate on reconnect without the caller.
   Future<T> Function()? fetcher;
@@ -120,8 +124,28 @@ class SwrCache extends ChangeNotifier {
   final Map<String, _Entry<dynamic>> _entries = {};
   final Map<String, Future<SwrState<dynamic>>> _inflight = {};
 
+  /// Rebuild a properly-typed [SwrState<T>] from the type-erased storage.
+  ///
+  /// [SwrState] stores data as `T?`; because the entry may be stored in the
+  /// dynamic-typed map, this reconstructs the exact generic the caller asked
+  /// for instead of risking a runtime `SwrState<dynamic> != SwrState<T>`
+  /// subtype failure.
+  SwrState<T> _typed<T>(_Entry<T> entry, SwrState<dynamic> raw) => SwrState<T>(
+        data: entry.data ?? raw.data as T?,
+        isLoading: raw.isLoading,
+        isRevalidating: raw.isRevalidating,
+        isOffline: raw.isOffline,
+        error: raw.error,
+        lastUpdated: raw.lastUpdated,
+      );
+
   /// Read the current state for [key] without triggering a fetch.
-  SwrState<T>? stateOf<T>(String key) => (_entries[key] as _Entry<T>?)?.state;
+  SwrState<T>? stateOf<T>(String key) {
+    final entry = _entries[key] as _Entry<T>?;
+    final raw = entry?.state;
+    if (raw == null || entry == null) return null;
+    return _typed(entry, raw);
+  }
 
   /// Load [key] following the SWR strategy. See the class docs.
   ///
@@ -151,7 +175,8 @@ class SwrCache extends ChangeNotifier {
     // 1) Deduplicate concurrent loads for the same key.
     final inflight = _inflight[key];
     if (inflight != null && !force) {
-      return await inflight as SwrState<T>;
+      final result = await inflight;
+      return _typed(entry, result);
     }
 
     // 2) Serve from cache if we have one and it is still fresh.
@@ -162,24 +187,22 @@ class SwrCache extends ChangeNotifier {
 
         if (age <= options.freshFor && !NetworkMonitor.instance.isOnline) {
           // Fresh + offline → serve cache, flag offline.
-          _publish(key, entry, cached.data, cached.encoded, cached.cachedAt, isOffline: true);
-          return entry.state!;
+          return _publish(key, entry, cached.data, cached.encoded, cached.cachedAt, isOffline: true);
         }
         if (age <= options.freshFor) {
           // Fresh + online → serve cache without touching the network.
-          _publish(key, entry, cached.data, cached.encoded, cached.cachedAt);
-          return entry.state!;
+          return _publish(key, entry, cached.data, cached.encoded, cached.cachedAt);
         }
 
         // Stale → serve cached data instantly, then revalidate in the
         // background. Capture the flag BEFORE publishing so we don't skip
         // the revalidation we just started.
         final alreadyRevalidating = entry.state?.isRevalidating ?? false;
-        _publish(key, entry, cached.data, cached.encoded, cached.cachedAt, isRevalidating: true);
+        final published = _publish(key, entry, cached.data, cached.encoded, cached.cachedAt, isRevalidating: true);
         if (!alreadyRevalidating) {
           unawaited(_revalidate(key, entry, fetcher, encode, options));
         }
-        return entry.state!;
+        return published;
       }
     }
 
@@ -309,36 +332,40 @@ class SwrCache extends ChangeNotifier {
       entry.data = data;
       entry.encoded = encoded;
       entry.cachedAt = DateTime.now();
-      _publishState(key, entry, SwrState(data: data, lastUpdated: entry.cachedAt));
-      return entry.state!;
+      final state = SwrState<dynamic>(data: data, lastUpdated: entry.cachedAt);
+      _publishState(key, entry, state);
+      return _typed(entry, state);
     } on NetworkException catch (e) {
       if (entry.data != null) {
         // Failed request must never remove valid cached data.
-        _publishState(
-          key,
-          entry,
-          SwrState(data: entry.data, lastUpdated: entry.cachedAt, isOffline: true, error: e),
+        final state = SwrState<dynamic>(
+          data: entry.data,
+          lastUpdated: entry.cachedAt,
+          isOffline: true,
+          error: e,
         );
+        _publishState(key, entry, state);
+        return _typed(entry, state);
       } else {
-        _publishState(key, entry, SwrState(isLoading: false, isOffline: true, error: e));
+        final state = SwrState<dynamic>(isLoading: false, isOffline: true, error: e);
+        _publishState(key, entry, state);
+        return _typed(entry, state);
       }
-      return entry.state!;
     } catch (e) {
       if (entry.data != null) {
-        _publishState(
-          key,
-          entry,
-          SwrState(
-            data: entry.data,
-            lastUpdated: entry.cachedAt,
-            isOffline: !NetworkMonitor.instance.isOnline,
-            error: e,
-          ),
+        final state = SwrState<dynamic>(
+          data: entry.data,
+          lastUpdated: entry.cachedAt,
+          isOffline: !NetworkMonitor.instance.isOnline,
+          error: e,
         );
+        _publishState(key, entry, state);
+        return _typed(entry, state);
       } else {
-        _publishState(key, entry, SwrState(isLoading: false, error: e));
+        final state = SwrState<dynamic>(isLoading: false, error: e);
+        _publishState(key, entry, state);
+        return _typed(entry, state);
       }
-      return entry.state!;
     }
   }
 
@@ -401,7 +428,7 @@ class SwrCache extends ChangeNotifier {
     }
   }
 
-  void _publish<T>(
+  SwrState<T> _publish<T>(
     String key,
     _Entry<T> entry,
     T data,
@@ -410,10 +437,10 @@ class SwrCache extends ChangeNotifier {
     bool isOffline = false,
     bool isRevalidating = false,
   }) {
-    _publishState(
+    return _publishState(
       key,
       entry,
-      SwrState(
+      SwrState<T>(
         data: data,
         lastUpdated: cachedAt,
         isOffline: isOffline,
@@ -422,8 +449,9 @@ class SwrCache extends ChangeNotifier {
     );
   }
 
-  void _publishState<T>(String key, _Entry<T> entry, SwrState<T> state) {
+  SwrState<T> _publishState<T>(String key, _Entry<T> entry, SwrState<dynamic> state) {
     entry.state = state;
     notifyListeners();
+    return _typed(entry, state);
   }
 }
