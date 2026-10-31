@@ -26,6 +26,8 @@ class ApiClient {
   static String get staticBaseUrl => AppConfig.apiBaseUrl;
 
   static const Duration _timeout = Duration(seconds: 20);
+  /// Health/model-info endpoints hit Render cold starts (30-60 s).
+  static const Duration _rootTimeout = Duration(seconds: 60);
 
   String? _token;
   String? get token => _token;
@@ -46,8 +48,15 @@ class ApiClient {
   // HTTP verbs
   // ---------------------------------------------------------------------
 
-  Future<http.Response> get(String path, {Map<String, String>? query}) => _guard(
-        () => http.get(_uri(path, query), headers: _headers).timeout(_timeout),
+  Future<http.Response> get(
+    String path, {
+    Map<String, String>? query,
+    Duration? timeout,
+  }) =>
+      _guard(
+        () => http
+            .get(_uri(path, query), headers: _headers)
+            .timeout(timeout ?? _timeout),
       );
 
   /// Send a GET to a path on the API *root* (outside the `/api` namespace).
@@ -60,12 +69,15 @@ class ApiClient {
           if (query != null && query.isNotEmpty) {
             uri = uri.replace(queryParameters: query);
           }
-          return http.get(uri, headers: _headers).timeout(_timeout);
+          return http.get(uri, headers: _headers).timeout(_rootTimeout);
         },
       );
 
-  Future<http.Response> post(String path, {Object? body}) => _guard(
-        () => http.post(_uri(path), headers: _headers, body: jsonEncode(body)).timeout(_timeout),
+  Future<http.Response> post(String path, {Object? body, Duration? timeout}) =>
+      _guard(
+        () => http
+            .post(_uri(path), headers: _headers, body: jsonEncode(body))
+            .timeout(timeout ?? _timeout),
       );
 
   Future<http.Response> put(String path, {Object? body}) => _guard(

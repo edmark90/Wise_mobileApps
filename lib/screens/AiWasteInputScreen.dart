@@ -51,23 +51,36 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
       _metaLoading = true;
       _metaError = null;
     });
-    try {
-      final results = await Future.wait<Map<String, dynamic>>([
-        AiService.instance.health(),
-        AiService.instance.modelInfo(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _health = results[0];
-        _modelInfo = results[1];
-        _metaLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _metaError = e;
-        _metaLoading = false;
-      });
+
+    int attempts = 0;
+    const maxAttempts = 3;
+    const retryDelay = Duration(seconds: 5);
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        final results = await Future.wait<Map<String, dynamic>>([
+          AiService.instance.health(),
+          AiService.instance.modelInfo(),
+        ]);
+        if (!mounted) return;
+        setState(() {
+          _health = results[0];
+          _modelInfo = results[1];
+          _metaLoading = false;
+        });
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        if (attempts < maxAttempts) {
+          await Future.delayed(retryDelay);
+          continue;
+        }
+        setState(() {
+          _metaError = e;
+          _metaLoading = false;
+        });
+      }
     }
   }
 

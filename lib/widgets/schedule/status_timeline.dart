@@ -91,6 +91,16 @@ class _StatusTimelineState extends State<StatusTimeline> {
   }
 
   @override
+  void didUpdateWidget(covariant StatusTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The truck selector can swap the selected assignment in place.
+    if (oldWidget.schedule.id != widget.schedule.id) {
+      _now = DateTime.now();
+      _status = deriveLiveStatus(widget.schedule, _now);
+    }
+  }
+
+  @override
   void dispose() {
     _timer.cancel();
     super.dispose();

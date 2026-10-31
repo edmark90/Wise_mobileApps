@@ -31,5 +31,6 @@ class AppConfig {
 
   /// The app always targets the production Render backend.
   static Future<String> resolveAutoBaseUrl() async => _defaultProdUrl;
+
 }
 

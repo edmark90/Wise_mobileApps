@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 import '../../models/collection_schedule.dart';
+import '../../services/route_color_service.dart';
 import 'status_timeline.dart';
+import 'truck_route_section.dart';
 
-/// Bottom sheet with full details of a collection route assignment plus its collection stops list.
-class ScheduleDetailSheet extends StatelessWidget {
+/// Bottom sheet with full details of a collection route assignment plus its
+/// collection stops, assigned-truck selector, and saved route map.
+class ScheduleDetailSheet extends StatefulWidget {
   final CollectionSchedule schedule;
   final List<CollectionSchedule> allSchedules;
 
@@ -16,7 +19,37 @@ class ScheduleDetailSheet extends StatelessWidget {
   });
 
   @override
+  State<ScheduleDetailSheet> createState() => _ScheduleDetailSheetState();
+}
+
+class _ScheduleDetailSheetState extends State<ScheduleDetailSheet> {
+  late CollectionSchedule _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.schedule;
+  }
+
+  /// Assignments for the selected date, ordered by departure time. The
+  /// selector only ever renders one truck's route at a time.
+  List<CollectionSchedule> get _assignments {
+    final byId = <int, CollectionSchedule>{};
+    for (final schedule in widget.allSchedules) {
+      if (schedule.collectionDate == widget.schedule.collectionDate) {
+        byId[schedule.id] = schedule;
+      }
+    }
+    byId[widget.schedule.id] = widget.schedule;
+    final result = byId.values.toList()
+      ..sort((a, b) => a.collectionTime.compareTo(b.collectionTime));
+    return result;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final schedule = _selected;
+    final routeColor = RouteColorService.getColorForSchedule(schedule, allAssignments: _assignments).color;
     final stopsList = schedule.stops.isNotEmpty
         ? schedule.stops
         : [
@@ -92,16 +125,16 @@ class ScheduleDetailSheet extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
+                                color: routeColor.withValues(alpha: 0.10),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                                border: Border.all(color: routeColor.withValues(alpha: 0.35)),
                               ),
                               child: Text(
                                 schedule.truckNumber,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1D4ED8),
+                                  color: routeColor,
                                 ),
                               ),
                             ),
@@ -148,6 +181,16 @@ class ScheduleDetailSheet extends StatelessWidget {
               children: [
                 // Status timeline
                 StatusTimeline(schedule: schedule),
+                const SizedBox(height: 18),
+
+                // Assigned truck route map (one truck at a time)
+                TruckRouteSection(
+                  assignments: _assignments,
+                  selectedScheduleId: _selected.id,
+                  onScheduleSelected: (assignment) {
+                    setState(() => _selected = assignment);
+                  },
+                ),
                 const SizedBox(height: 20),
 
                 // Info Cards Grid

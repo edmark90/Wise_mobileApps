@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 import '../../models/collection_schedule.dart';
+import '../../services/route_color_service.dart';
 
 /// Single collection route assignment card with a timeline bar, truck identification, and stops.
 class ScheduleCard extends StatelessWidget {
@@ -20,6 +21,7 @@ class ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final routeColor = RouteColorService.getColorForSchedule(schedule).color;
     final isFirst = cardIndex == 0;
     final isLast = cardIndex == totalInGroup - 1;
     final hasStops = schedule.stops.isNotEmpty;
@@ -34,11 +36,11 @@ class ScheduleCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isFirst ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFFE5E7EB),
+              color: isFirst ? routeColor.withValues(alpha: 0.25) : const Color(0xFFE5E7EB),
             ),
             boxShadow: [
               BoxShadow(
-                color: isFirst ? AppColors.primary.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                color: isFirst ? routeColor.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.03),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -47,7 +49,7 @@ class ScheduleCard extends StatelessWidget {
           child: IntrinsicHeight(
             child: Row(
               children: [
-                // Left timeline bar
+                // Left timeline bar with route color
                 Container(
                   width: 4,
                   decoration: BoxDecoration(
@@ -55,8 +57,8 @@ class ScheduleCard extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        if (isFirst) AppColors.primary else const Color(0xFFCBD5E1),
-                        if (isLast) AppColors.primary else const Color(0xFFCBD5E1),
+                        routeColor,
+                        routeColor.withValues(alpha: 0.65),
                       ],
                     ),
                     borderRadius: const BorderRadius.only(
@@ -116,21 +118,21 @@ class ScheduleCard extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
+                                  color: routeColor.withValues(alpha: 0.10),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  border: Border.all(color: routeColor.withValues(alpha: 0.35)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.local_shipping_rounded, size: 10, color: Color(0xFF1D4ED8)),
+                                    Icon(Icons.local_shipping_rounded, size: 10, color: routeColor),
                                     const SizedBox(width: 3),
                                     Text(
                                       schedule.truckNumber,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1D4ED8),
+                                        color: routeColor,
                                       ),
                                     ),
                                   ],
