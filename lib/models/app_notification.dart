@@ -18,9 +18,6 @@ class AppNotification {
   final String collectionTime;
   final DateTime? createdAt;
   final bool isRead;
-  final String? appVersion;
-  final String? apkUrl;
-
   const AppNotification({
     required this.id,
     required this.title,
@@ -36,8 +33,6 @@ class AppNotification {
     required this.collectionTime,
     this.createdAt,
     required this.isRead,
-    this.appVersion,
-    this.apkUrl,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -56,8 +51,6 @@ class AppNotification {
       collectionTime: json['collection_time'] ?? '',
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       isRead: json['is_read'] ?? false,
-      appVersion: json['app_version'],
-      apkUrl: json['apk_url'],
     );
   }
 
@@ -96,13 +89,28 @@ class AppNotification {
       );
 
   List<String> get barangayList {
-    if (affectedBarangays.isEmpty) return const [];
+    final raw = affectedBarangays.trim();
+    if (raw.isEmpty) return const [];
     try {
-      final list = jsonDecode(affectedBarangays);
-      return list is List ? list.map((e) => e.toString()).toList() : const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
     } catch (_) {
-      return const [];
+      // Fallback to comma-separated string parsing
     }
+    return raw
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '')
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   String get formattedTime {

@@ -7,8 +7,12 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import '../app_colors.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 import '../core/constants.dart';
+import '../design_system/widgets/app_button.dart';
+import '../design_system/widgets/app_card.dart';
+import '../design_system/widgets/section_header.dart';
 import '../models/profile.dart';
 import '../widgets/common/swr_state_view.dart';
 import '../widgets/profile/profile_action_tile.dart';
@@ -16,9 +20,6 @@ import '../widgets/profile/profile_info_row.dart';
 import '../widgets/profile/upload_progress_dialog.dart';
 import 'ChangePasswordScreen.dart';
 
-/// Profile view (MVC View). All data + mutations go through
-/// [ProfileController], which loads via the SWR cache — so the profile
-/// appears instantly on return visits while a background refresh runs.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -42,15 +43,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? const Color(0xFFC62828) : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
-
-  // ---------------------------------------------------------------------
-  // Photo
-  // ---------------------------------------------------------------------
 
   void _showPhotoSheet(Profile profile) {
     final hasPhoto = profile.hasPhoto;
@@ -60,59 +58,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.borderStrong,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.lightBg,
-                child: const Icon(Icons.photo_camera_rounded, color: AppColors.primary),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'Change Profile Photo',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
-              title: const Text('Take Photo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              onTap: () => _pickImage(ImageSource.camera),
-            ),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.lightBg,
-                child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-              ),
-              title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              onTap: () => _pickImage(ImageSource.gallery),
-            ),
-            if (hasPhoto)
+              const Divider(height: 1, color: AppColors.border),
               ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFFEF2F2),
-                  child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_camera_rounded, color: AppColors.primary, size: 20),
                 ),
-                title: const Text(
-                  'Remove Current Photo',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFFDC2626)),
+                title: const Text('Take Photo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Capture with device camera', style: TextStyle(fontSize: 12)),
+                onTap: () => _pickImage(ImageSource.camera),
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: AppColors.textPrimary, size: 20),
                 ),
-                onTap: _removePhoto,
+                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Select a saved image', style: TextStyle(fontSize: 12)),
+                onTap: () => _pickImage(ImageSource.gallery),
               ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.close_rounded, color: Colors.grey),
-              title: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey),
-              ),
-              onTap: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: 8),
-          ],
+              if (hasPhoto)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.errorContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                  ),
+                  title: const Text('Remove Photo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
+                  subtitle: const Text('Revert to initial avatar', style: TextStyle(fontSize: 12)),
+                  onTap: _removePhoto,
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -134,12 +152,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
       await _uploadPhoto(processed, filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
-    } catch (e) {
-      _snack('Could not access the camera or gallery', isError: true);
+    } catch (_) {
+      _snack('Could not access camera or gallery', isError: true);
     }
   }
 
-  // Center-crop to a square, resize to 512x512, then compress as JPG.
   Uint8List? _processImage(Uint8List bytes) {
     try {
       final decoded = img.decodeImage(bytes);
@@ -174,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _controller.uploadPhoto(bytes, filename: filename);
       if (!mounted) return;
       Navigator.of(context).pop();
-      _snack('Profile picture updated');
+      _snack('Profile photo updated');
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -186,15 +203,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pop(context);
     try {
       await _controller.removePhoto();
-      _snack('Profile picture removed');
+      _snack('Profile photo removed');
     } catch (e) {
       _snack('Could not remove photo', isError: true);
     }
   }
-
-  // ---------------------------------------------------------------------
-  // Edit profile sheet
-  // ---------------------------------------------------------------------
 
   void _showEditSheet(Profile profile) {
     final fullnameController = TextEditingController(text: profile.fullname);
@@ -211,12 +224,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
-          // Get zones for selected barangay
           final zonesForBarangay = barangay != null
               ? (AppConstants.zonesByBarangay[barangay] ?? AppConstants.defaultZones)
               : <String>[];
 
-          // Reset zone if not in the new barangay's zones
           if (zone != null && !zonesForBarangay.contains(zone)) {
             zone = null;
           }
@@ -224,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,24 +245,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: AppColors.borderStrong,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Edit Profile',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    'Edit Profile Information',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Email cannot be changed.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  const Text(
+                    'Keep your Muntinlupa residence and contact details updated',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 18),
                   _editField(
-                    label: 'Email',
+                    label: 'Email (Read-only)',
                     controller: TextEditingController(text: profile.email),
                     enabled: false,
                   ),
@@ -263,43 +274,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   const Text(
                     'Barangay',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   _dropdown<String>(
-                    hint: 'Select barangay',
+                    hint: 'Select your barangay',
                     value: barangay,
                     items: AppConstants.barangays,
                     onChanged: (v) => setSheetState(() {
                       barangay = v;
-                      zone = null; // Reset zone when barangay changes
+                      zone = null;
                     }),
                   ),
                   const SizedBox(height: 14),
                   const Text(
                     'Zone / Street',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   if (barangay == null)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
                       decoration: BoxDecoration(
-                        color: AppColors.lightBg,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Select a barangay first',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
                       ),
                     )
                   else
                     _dropdown<String>(
-                      hint: 'Select zone',
+                      hint: 'Select your zone / street',
                       value: zone,
                       items: zonesForBarangay,
                       onChanged: (v) => setSheetState(() => zone = v),
@@ -307,8 +319,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 22),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
+                    height: 48,
+                    child: WiseButton(
+                      label: 'Save Changes',
                       onPressed: () async {
                         try {
                           await _controller.update(
@@ -320,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           if (!sheetContext.mounted) return;
                           Navigator.of(sheetContext).pop();
                           if (!mounted) return;
-                          _snack('Profile updated');
+                          _snack('Profile updated successfully');
                         } catch (e) {
                           if (!mounted) return;
                           _snack(
@@ -329,15 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         }
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Save Changes',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
+                      fullWidth: true,
                     ),
                   ),
                 ],
@@ -355,22 +360,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType? keyboardType,
     bool enabled = true,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 15, color: Color(0xFF0F172A)),
+      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey[600]),
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         filled: true,
-        fillColor: enabled ? AppColors.lightBg : Colors.grey[100],
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        fillColor: enabled ? AppColors.surfaceVariant : const Color(0xFFF1F5F9),
+        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -385,151 +394,205 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return DropdownButtonFormField<T>(
       initialValue: value,
       isExpanded: true,
-      hint: Text(hint, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+      hint: Text(hint, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
       items: items
           .map((item) => DropdownMenuItem<T>(value: item, child: Text(item.toString(), style: const TextStyle(fontSize: 14))))
           .toList(),
       onChanged: onChanged,
       decoration: InputDecoration(
         filled: true,
-        fillColor: AppColors.lightBg,
+        fillColor: AppColors.surfaceVariant,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out of your WISE account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log Out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await AuthController.instance.logout();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _controller,
-      builder: (context, _) {
-        final state = _controller.state;
-        if (state == null) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-        }
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          color: AppColors.primary,
-          child: SwrStateView<Profile>(
-            state: state,
-            onRetry: _refresh,
-            builder: (context, profile) => _buildContent(profile),
-          ),
-        );
-      },
+    return Container(
+      color: AppColors.background,
+      child: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, _) {
+          final state = _controller.state;
+          if (state == null) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.primary,
+            child: SwrStateView<Profile>(
+              state: state,
+              onRetry: _refresh,
+              builder: (context, profile) => _buildContent(profile),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildContent(Profile profile) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
       children: [
         _buildIdCard(profile),
         const SizedBox(height: 16),
+        const SectionHeader(
+          title: 'Account Information',
+          subtitle: 'Your registered details and jurisdiction',
+        ),
+        const SizedBox(height: 8),
         _buildRecordCard(profile),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
+        const SectionHeader(
+          title: 'Account Security & Settings',
+          subtitle: 'Manage credentials and preferences',
+        ),
+        const SizedBox(height: 8),
         ProfileActionTile(
           icon: Icons.edit_rounded,
-          title: 'Edit Profile',
-          subtitle: 'Update your name, phone, and address',
+          title: 'Edit Profile Information',
+          subtitle: 'Update your display name, phone, and address',
           onTap: () => _showEditSheet(profile),
         ),
         const SizedBox(height: 8),
         ProfileActionTile(
           icon: Icons.lock_outline_rounded,
           title: 'Change Password',
-          subtitle: 'Update your account password',
+          subtitle: 'Update your security credentials',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
           ),
+        ),
+        const SizedBox(height: 24),
+        WiseOutlinedButton(
+          label: 'Log Out of Account',
+          icon: Icons.logout_rounded,
+          onPressed: _confirmLogout,
+          fullWidth: true,
         ),
       ],
     );
   }
 
   Widget _buildIdCard(Profile profile) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 8)),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      color: Colors.white,
+      borderColor: AppColors.border,
+      borderWidth: 1,
+      elevation: 1,
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        children: [
+          _buildAvatar(profile),
+          const SizedBox(height: 14),
+          Text(
+            profile.fullname.isNotEmpty ? profile.fullname : 'Resident',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            profile.addressLine.isNotEmpty ? profile.addressLine : 'Muntinlupa City',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Text(
+              profile.roleLabel,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-        child: Column(
-          children: [
-            _buildAvatar(profile),
-            const SizedBox(height: 16),
-            Text(
-              profile.fullname,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              profile.addressLine,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                profile.roleLabel,
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildAvatar(Profile profile) {
     final imageUrl = _controller.imageUrl(profile.profileImage);
+    final initial = profile.fullname.trim().isNotEmpty ? profile.fullname.trim()[0].toUpperCase() : 'U';
+
     return Stack(
       children: [
         Container(
-          width: 104,
-          height: 104,
+          width: 92,
+          height: 92,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
             border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: ClipOval(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      key: ValueKey(imageUrl),
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => _avatarPlaceholder(),
-                      errorWidget: (context, url, error) => _avatarPlaceholder(),
-                    )
-                  : _avatarPlaceholder(key: const ValueKey('placeholder')),
-            ),
+            child: imageUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => _avatarPlaceholder(initial),
+                    errorWidget: (context, url, error) => _avatarPlaceholder(initial),
+                  )
+                : _avatarPlaceholder(initial),
           ),
         ),
         Positioned(
@@ -538,15 +601,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: GestureDetector(
             onTap: () => _showPhotoSheet(profile),
             child: Container(
-              width: 34,
-              height: 34,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.primary,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary, width: 2),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6)],
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6),
+                ],
               ),
-              child: const Icon(Icons.photo_camera_rounded, color: AppColors.primary, size: 18),
+              child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 15),
             ),
           ),
         ),
@@ -554,38 +619,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _avatarPlaceholder({Key? key}) {
+  Widget _avatarPlaceholder(String initial) {
     return Container(
-      key: key,
-      color: AppColors.lightBg,
-      child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 56),
+      color: AppColors.primaryContainer,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 
   Widget _buildRecordCard(Profile profile) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+    return AppCard(
+      padding: EdgeInsets.zero,
+      color: Colors.white,
+      borderColor: AppColors.border,
+      borderWidth: 1,
+      elevation: 1,
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         children: [
-          ProfileInfoRow(icon: Icons.mail_outline_rounded, label: 'Email', value: profile.email),
+          ProfileInfoRow(icon: Icons.mail_outline_rounded, label: 'Email Address', value: profile.email),
           ProfileInfoRow(
             icon: Icons.phone_outlined,
-            label: 'Phone',
-            value: profile.phone.isEmpty ? '—' : profile.phone,
+            label: 'Contact Number',
+            value: profile.phone.isEmpty ? 'Not set' : profile.phone,
           ),
           ProfileInfoRow(
             icon: Icons.location_on_outlined,
-            label: 'Barangay',
-            value: profile.barangay.isEmpty ? '—' : profile.barangay,
+            label: 'Registered Barangay',
+            value: profile.barangay.isEmpty ? 'Not set' : profile.barangay,
           ),
           ProfileInfoRow(
             icon: Icons.map_outlined,
-            label: 'Zone',
-            value: profile.zone.isEmpty ? '—' : profile.zone,
+            label: 'Assigned Zone / Street',
+            value: profile.zone.isEmpty ? 'Not set' : profile.zone,
             isLast: true,
           ),
         ],

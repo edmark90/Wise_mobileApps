@@ -144,10 +144,15 @@ class _NotificationSettingsPanelState extends State<NotificationSettingsPanel> {
   void _toggleBarangay(String barangay, bool selected) {
     final s = _draft!;
     final current = List<String>.from(s.preferredBarangays);
-    if (selected && !current.contains(barangay)) {
+    final exists = current.any(
+      (b) => b.trim().toLowerCase() == barangay.toLowerCase(),
+    );
+    if (selected && !exists) {
       current.add(barangay);
     } else if (!selected) {
-      current.remove(barangay);
+      current.removeWhere(
+        (b) => b.trim().toLowerCase() == barangay.toLowerCase(),
+      );
     }
     setState(() => _draft = s.copyWith(preferredBarangays: current));
   }
@@ -167,7 +172,15 @@ class _NotificationSettingsPanelState extends State<NotificationSettingsPanel> {
     if (s == null) return;
     final ok = await _controller.save(s);
     if (!mounted) return;
-    _snack(ok ? 'Saved' : _controller.error ?? 'Could not save settings', isError: !ok);
+    _snack(
+      ok
+          ? 'Notification preferences saved'
+          : (_controller.error ?? 'Could not save settings'),
+      isError: !ok,
+    );
+    if (ok && mounted) {
+      Navigator.pop(context);
+    }
   }
 
   void _reset() {
@@ -294,6 +307,39 @@ class _NotificationSettingsPanelState extends State<NotificationSettingsPanel> {
             children: [
               _sectionLabel('Preferred Barangays'),
               const Spacer(),
+              TextButton(
+                onPressed: () {
+                  final allSelected = settings.preferredBarangays.length ==
+                      AppConstants.barangays.length;
+                  setState(() {
+                    _draft = settings.copyWith(
+                      preferredBarangays: allSelected
+                          ? <String>[]
+                          : List<String>.from(AppConstants.barangays),
+                    );
+                  });
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  settings.preferredBarangays.length ==
+                          AppConstants.barangays.length
+                      ? 'Clear All'
+                      : 'Select All',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -313,7 +359,7 @@ class _NotificationSettingsPanelState extends State<NotificationSettingsPanel> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Only receive alerts for these areas.',
+            'Select one or more barangays to receive notifications only for those areas.',
             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
           const SizedBox(height: 10),
@@ -325,35 +371,60 @@ class _NotificationSettingsPanelState extends State<NotificationSettingsPanel> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: settings.preferredBarangays.isEmpty
-                ? Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (settings.preferredBarangays.isEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            size: 16,
+                            color: Color(0xFFB45309),
+                          ),
                         ),
-                        child: const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFB45309)),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'No area selected — you will only get announcements sent to everyone.',
-                          style: TextStyle(fontSize: 12.5, color: Color(0xFF57534E), height: 1.35),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'No barangay selected — tap one or more areas below to receive their collection alerts.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF57534E),
+                              height: 1.35,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  )
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: AppConstants.barangays.map((barangay) {
-                      final selected = settings.preferredBarangays.contains(barangay);
-                      return _barangayChip(barangay, selected);
-                    }).toList(),
+                      ],
+                    ),
                   ),
+                ],
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AppConstants.barangays.map((barangay) {
+                    final selected = settings.preferredBarangays.any(
+                      (b) => b.trim().toLowerCase() == barangay.toLowerCase(),
+                    );
+                    return _barangayChip(barangay, selected);
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         ],
       ),

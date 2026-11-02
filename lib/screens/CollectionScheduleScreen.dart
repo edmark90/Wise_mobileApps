@@ -1,21 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../controllers/notification_controller.dart';
 import '../controllers/schedule_controller.dart';
 import '../core/constants.dart';
+import '../design_system/widgets/empty_state.dart';
 import '../models/collection_schedule.dart';
-import '../widgets/common/empty_state_view.dart';
 import '../widgets/common/swr_state_view.dart';
 import '../widgets/schedule/barangay_filter.dart';
 import '../widgets/schedule/day_section_header.dart';
 import '../widgets/schedule/schedule_card.dart';
 import '../widgets/schedule/schedule_detail_sheet.dart';
 
-/// Collection Schedule view (MVC View).
-///
-/// All data comes from [ScheduleController], which loads through the SWR
-/// cache: cached schedules render instantly on every visit, a background
-/// revalidation refreshes them, and pull-to-refresh forces a fetch.
 class CollectionScheduleScreen extends StatefulWidget {
   const CollectionScheduleScreen({super.key});
 
@@ -25,19 +23,33 @@ class CollectionScheduleScreen extends StatefulWidget {
 
 class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
   final ScheduleController _controller = ScheduleController.instance;
+  Timer? _liveStatusTimer;
 
   @override
   void initState() {
     super.initState();
     _controller.load();
+    NotificationController.instance.load();
+    _liveStatusTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
-  Future<void> _refresh() => _controller.load(force: true);
+  @override
+  void dispose() {
+    _liveStatusTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([
+      _controller.load(force: true),
+      NotificationController.instance.load(force: true),
+    ]);
+  }
 
   void _showScheduleDetail(CollectionSchedule schedule) {
     final all = _controller.state?.data ?? const <CollectionSchedule>[];
-    // Keep every assignment for the date so the detail sheet can offer a truck
-    // selector. Only the selected truck's route is ever rendered.
     final sameDateSchedules = all
         .where((s) => s.collectionDate == schedule.collectionDate)
         .toList()
@@ -57,7 +69,10 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _controller,
+      listenable: Listenable.merge([
+        _controller,
+        NotificationController.instance,
+      ]),
       builder: (context, _) {
         final state = _controller.state;
         if (state == null) {
@@ -88,30 +103,35 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
-          child: BarangayFilter(
-            allBarangays: AppConstants.barangays,
-            selected: _controller.selectedBarangays,
-            onToggle: _controller.toggleBarangay,
-            onClear: _controller.clearBarangays,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: BarangayFilter(
+              allBarangays: AppConstants.barangays,
+              selected: _controller.selectedBarangays,
+              onToggle: _controller.toggleBarangay,
+              onClear: _controller.clearBarangays,
+            ),
           ),
         ),
         if (filtered.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: EmptyStateView(
-              icon: _controller.selectedBarangays.isNotEmpty
-                  ? Icons.search_off_rounded
-                  : Icons.event_busy_rounded,
-              title: _controller.selectedBarangays.isNotEmpty ? 'No Schedules Found' : 'No Upcoming Schedules',
-              message: _controller.filteredEmptyMessage,
-              backgroundColor: _controller.selectedBarangays.isNotEmpty
-                  ? const Color(0xFFFFF7ED)
-                  : null,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: EmptyState(
+                icon: _controller.selectedBarangays.isNotEmpty
+                    ? Icons.search_off_rounded
+                    : Icons.event_busy_rounded,
+                title: _controller.selectedBarangays.isNotEmpty
+                    ? 'No Schedules in Selected Barangay'
+                    : 'No Upcoming Collection Schedules',
+                message: _controller.filteredEmptyMessage,
+              ),
             ),
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -145,8 +165,8 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                 childCount: () {
                   var count = 0;
                   for (final date in sortedDates) {
-                    count += 1; // header
-                    count += grouped[date]!.length; // cards
+                    count += 1;
+                    count += grouped[date]!.length;
                   }
                   return count;
                 }(),

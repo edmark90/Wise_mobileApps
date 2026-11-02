@@ -19,8 +19,14 @@ class DaySectionHeader extends StatelessWidget {
 
   Color get _color {
     if (dayDiff == 0) return AppColors.primary;
-    if (dayDiff == 1) return const Color(0xFF3B82F6);
-    return const Color(0xFF6B7280);
+    if (dayDiff == 1) return const Color(0xFF0284C7);
+    return AppColors.textPrimary;
+  }
+
+  Color get _bgTint {
+    if (dayDiff == 0) return AppColors.primaryContainer;
+    if (dayDiff == 1) return const Color(0xFFE0F2FE);
+    return AppColors.surfaceContainer;
   }
 
   IconData get _icon {
@@ -32,50 +38,60 @@ class DaySectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _color;
+    final isSpecialDay = dayDiff == 0 || dayDiff == 1;
+
     return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.only(top: 14, bottom: 8),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: _bgTint,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(_icon, color: color, size: 18),
+            child: Icon(_icon, color: isSpecialDay ? color : AppColors.textSecondary, size: 17),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '·  $shortDate',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              shortDate,
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
             ),
             child: Text(
               '$routeCount route${routeCount > 1 ? 's' : ''}',
-              style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

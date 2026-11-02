@@ -5,8 +5,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../app_colors.dart';
 import '../controllers/waste_guide_controller.dart';
+import '../design_system/widgets/app_button.dart';
+import '../design_system/widgets/app_card.dart';
 import '../models/ai_waste.dart';
 import '../models/waste_bin.dart';
+import '../models/waste_guide.dart';
 import '../services/ai_service.dart';
 import 'MainScreen.dart';
 
@@ -27,14 +30,12 @@ class AiWasteInputScreen extends StatefulWidget {
 class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
   final ImagePicker _picker = ImagePicker();
 
-  // Capture + prediction state
   Uint8List? _imageBytes;
   String? _imageName;
   bool _predicting = false;
   AiWaste? _result;
   Object? _error;
 
-  // Backend health + model metadata
   Map<String, dynamic>? _health;
   Map<String, dynamic>? _modelInfo;
   bool _metaLoading = true;
@@ -88,15 +89,12 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? const Color(0xFFC62828) : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
-
-  // ---------------------------------------------------------------------
-  // Capture
-  // ---------------------------------------------------------------------
 
   void _showPickSheet() {
     showModalBottomSheet(
@@ -106,54 +104,69 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.borderStrong,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.lightBg,
-                child: const Icon(Icons.photo_camera_rounded, color: AppColors.primary),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'Select Image Source',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
-              title: const Text('Take Photo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Use device camera', style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.lightBg,
-                child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+              const Divider(height: 1, color: AppColors.border),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_camera_rounded, color: AppColors.primary, size: 20),
+                ),
+                title: const Text('Take Photo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Use device camera to photograph waste', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickImage(ImageSource.camera);
+                },
               ),
-              title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Select a saved image', style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.close_rounded, color: Colors.grey),
-              title: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: AppColors.textPrimary, size: 20),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Select a saved photo from your device', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickImage(ImageSource.gallery);
+                },
               ),
-              onTap: () => Navigator.pop(sheetContext),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -168,8 +181,6 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
       );
       if (picked == null || !mounted) return;
       final bytes = await picked.readAsBytes();
-      // Derive the file extension from the picker path so we upload the
-      // correct MIME type (e.g. .png from gallery, .jpg from camera).
       final ext = picked.path.isNotEmpty ? picked.path.split('.').last.toLowerCase() : 'jpg';
       final safeExt = ['jpg', 'jpeg', 'png', 'webp'].contains(ext) ? ext : 'jpg';
       setState(() {
@@ -192,10 +203,6 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
       _error = null;
     });
   }
-
-  // ---------------------------------------------------------------------
-  // Prediction
-  // ---------------------------------------------------------------------
 
   Future<void> _classify() async {
     final bytes = _imageBytes;
@@ -226,10 +233,6 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------
-  // Metadata Helpers
-  // ---------------------------------------------------------------------
-
   bool get _isHealthy {
     final h = _health;
     if (h == null) return false;
@@ -241,21 +244,6 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
   String? get _backbone {
     final v = (_modelInfo?['backbone'] ?? '').toString();
     return v.isEmpty ? null : v;
-  }
-
-  String? get _inputSize {
-    final v = _modelInfo?['inputs'] ?? _modelInfo?['input_size'];
-    if (v == null) return null;
-    if (v is String || v is num) {
-      final s = v.toString();
-      return s.isEmpty ? null : s;
-    }
-    if (v is List && v.isNotEmpty) {
-      if (v.every((e) => e is num)) return v.map((e) => e.toString()).join('×');
-      return '${v.length} inputs';
-    }
-    if (v is Map && v.isNotEmpty) return '${v.length} inputs';
-    return null;
   }
 
   int? get _classCount {
@@ -276,27 +264,23 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     return const [];
   }
 
-  // ---------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.background,
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildMetaStatus(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             if (_imageBytes == null)
               _buildCaptureCard()
             else ...[
               _buildPreviewCard(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildClassifyButton(),
             ],
             if (_predicting) ...[
@@ -309,8 +293,6 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
             ],
             if (_result != null) ...[
               const SizedBox(height: 20),
-              _buildResultHeader(),
-              const SizedBox(height: 12),
               _buildResultCard(_result!),
             ],
           ],
@@ -319,44 +301,58 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  // ─── Backend status strip ─────────────────────────────────────────
   Widget _buildMetaStatus() {
     if (_metaLoading) {
-      return _statusPill(
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 12,
-              height: 12,
+              width: 14,
+              height: 14,
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ),
             SizedBox(width: 8),
-            Text('Checking AI service…', style: TextStyle(fontSize: 12)),
+            Text(
+              'Connecting to AI service…',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       );
     }
+
     if (_metaError != null) {
-      return _statusPill(
-        color: AppColors.errorContainer,
-        borderColor: AppColors.error.withValues(alpha: 0.3),
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.warningContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 14, color: AppColors.error),
-            const SizedBox(width: 6),
-            Flexible(
+            const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.onWarningContainer),
+            const SizedBox(width: 8),
+            const Expanded(
               child: Text(
-                'Just wait, starting the server on Render…',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.onErrorContainer, fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
+                'AI server is warming up on Render. Classification will connect shortly.',
+                style: TextStyle(fontSize: 11.5, color: AppColors.onWarningContainer, fontWeight: FontWeight.w500),
               ),
             ),
             const SizedBox(width: 8),
             GestureDetector(
               onTap: _loadMeta,
-              child: const Text('Retry', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: AppColors.error)),
+              child: const Text(
+                'Retry',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.onWarningContainer),
+              ),
             ),
           ],
         ),
@@ -365,26 +361,33 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
 
     final classes = _classNames();
     final count = _classCount;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _statusPill(
-          color: _isHealthy ? AppColors.successContainer : AppColors.errorContainer,
-          borderColor: _isHealthy ? AppColors.success.withValues(alpha: 0.3) : AppColors.error.withValues(alpha: 0.3),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: _isHealthy ? AppColors.successContainer : AppColors.errorContainer,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _isHealthy ? AppColors.success.withValues(alpha: 0.3) : AppColors.error.withValues(alpha: 0.3),
+            ),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _isHealthy ? Icons.check_circle_rounded : Icons.error_rounded,
-                size: 14,
+                _isHealthy ? Icons.check_circle_rounded : Icons.cloud_off_rounded,
+                size: 13,
                 color: _isHealthy ? AppColors.onSuccessContainer : AppColors.error,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
-                _isHealthy ? 'AI Service Online' : 'AI Service Offline',
+                _isHealthy ? 'AI Service Ready' : 'AI Service Offline',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: _isHealthy ? AppColors.onSuccessContainer : AppColors.onErrorContainer,
                 ),
@@ -393,48 +396,44 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
           ),
         ),
         if (_backbone != null)
-          _statusPill(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.memory_rounded, size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 6),
-                Text('Model: $_backbone', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Icon(Icons.memory_rounded, size: 13, color: AppColors.textTertiary),
+                const SizedBox(width: 5),
+                Text(
+                  _backbone!,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
               ],
             ),
           ),
         if (count != null)
-          _statusPill(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.category_rounded, size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 6),
-                Text('$count Categories', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        if (_inputSize != null)
-          _statusPill(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.aspect_ratio_rounded, size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 6),
-                Text('Input: $_inputSize', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        if (classes.isNotEmpty)
           GestureDetector(
-            onTap: () => _showClassesSheet(classes),
-            child: _statusPill(
-              child: const Row(
+            onTap: classes.isNotEmpty ? () => _showClassesSheet(classes) : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 14, color: AppColors.primary),
-                  SizedBox(width: 6),
-                  Text('View Classes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const Icon(Icons.category_rounded, size: 13, color: AppColors.primary),
+                  const SizedBox(width: 5),
+                  Text(
+                    '$count Categories',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  ),
                 ],
               ),
             ),
@@ -443,23 +442,13 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  Widget _statusPill({required Widget child, Color? color, Color? borderColor}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color ?? AppColors.surfaceContainer,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: borderColor ?? AppColors.border),
-      ),
-      child: child,
-    );
-  }
-
   void _showClassesSheet(List<String> classes) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -467,13 +456,24 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'AI Waste Classification Categories',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Standard waste classification categories recognized by the model',
+                'The model is trained to recognize standard domestic waste streams',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -483,7 +483,7 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: bin.container,
                       borderRadius: BorderRadius.circular(12),
@@ -491,19 +491,19 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                     ),
                     child: Row(
                       children: [
-                        Text(bin.emoji, style: const TextStyle(fontSize: 20)),
+                        Text(bin.emoji, style: const TextStyle(fontSize: 18)),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             name,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: bin.color,
-                            borderRadius: BorderRadius.circular(99),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             bin.name,
@@ -522,136 +522,135 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  // ─── Capture card ────────────────────────────────────────────────
   Widget _buildCaptureCard() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8), Color(0xFF1E3A8A)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
+    return AppCard(
+      padding: const EdgeInsets.all(24),
+      color: Colors.white,
+      borderColor: AppColors.border,
+      borderWidth: 1,
+      elevation: 1,
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
         children: [
-          Positioned(
-            top: -20,
-            right: -20,
-            child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF3B82F6), AppColors.primary],
               ),
-            ),
-          ),
-          Positioned(
-            bottom: -30,
-            left: -10,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
-                  ),
-                  child: const Icon(Icons.photo_camera_front_rounded, color: Colors.white, size: 44),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Classify Waste',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Capture or upload a photo of waste to automatically identify its category and proper disposal bin.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, height: 1.5, color: Colors.white.withValues(alpha: 0.85)),
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _captureButton(
-                        icon: Icons.photo_camera_rounded,
-                        label: 'Camera',
-                        onTap: () => _pickImage(ImageSource.camera),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _captureButton(
-                        icon: Icons.photo_library_rounded,
-                        label: 'Gallery',
-                        filled: true,
-                        onTap: () => _pickImage(ImageSource.gallery),
-                      ),
-                    ),
-                  ],
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
+            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 36),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Scan & Classify Waste',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Take a photo of your waste item to instantly identify its category, proper disposal bin, and recycling tips.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: WiseButton(
+                    label: 'Take Photo',
+                    icon: Icons.photo_camera_rounded,
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    fullWidth: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: WiseOutlinedButton(
+                    label: 'Upload File',
+                    icon: Icons.photo_library_rounded,
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    fullWidth: true,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _captureButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool filled = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: filled ? Colors.white : Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: filled ? null : Border.all(color: Colors.white.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildPreviewCard() {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      color: Colors.white,
+      borderColor: AppColors.border,
+      borderWidth: 1,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
           children: [
-            Icon(icon, size: 20, color: filled ? AppColors.primary : Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: filled ? AppColors.primary : Colors.white,
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 14),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black87],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Photo Captured',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    _previewButton(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Change',
+                      onTap: _showPickSheet,
+                    ),
+                    const SizedBox(width: 8),
+                    _previewButton(
+                      icon: Icons.refresh_rounded,
+                      label: 'Retake',
+                      onTap: _reset,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -660,7 +659,7 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  Widget _scrimButton({
+  Widget _previewButton({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -670,8 +669,9 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(99),
+          color: Colors.white.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -685,101 +685,50 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  // ─── Preview + classify ──────────────────────────────────────────
-  Widget _buildPreviewCard() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowMedium, blurRadius: 16, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            AspectRatio(
-              aspectRatio: 4 / 3,
-              child: Image.memory(_imageBytes!, fit: BoxFit.cover),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 40, 16, 12),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black54],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Ready to Classify',
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    _scrimButton(icon: Icons.swap_horiz_rounded, label: 'Change', onTap: _showPickSheet),
-                    const SizedBox(width: 8),
-                    _scrimButton(icon: Icons.refresh_rounded, label: 'New', onTap: _reset),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildClassifyButton() {
     final enabled = _imageBytes != null && !_predicting;
     return SizedBox(
       width: double.infinity,
-      height: 54,
-      child: ElevatedButton.icon(
+      height: 50,
+      child: WiseButton(
+        label: 'Identify & Classify Waste',
+        icon: Icons.auto_awesome_rounded,
         onPressed: enabled ? _classify : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          disabledBackgroundColor: AppColors.surfaceContainerHigh,
-          foregroundColor: Colors.white,
-          disabledForegroundColor: AppColors.textTertiary,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        icon: const Icon(Icons.auto_awesome_rounded, size: 20),
-        label: const Text(
-          'Classify Waste',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+        fullWidth: true,
       ),
     );
   }
 
   Widget _buildProgressCard() {
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-      ),
+      color: AppColors.primaryContainer,
+      borderColor: AppColors.primary.withValues(alpha: 0.25),
+      borderWidth: 1,
+      elevation: 0,
+      borderRadius: BorderRadius.circular(16),
       child: const Row(
         children: [
           SizedBox(
-            width: 20,
-            height: 20,
+            width: 22,
+            height: 22,
             child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 14),
           Expanded(
-            child: Text(
-              'AI is analyzing the image…',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onPrimaryContainer),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI Model is analyzing image…',
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.onPrimaryContainer),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Detecting materials and recycling eligibility',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.onPrimaryContainer),
+                ),
+              ],
             ),
           ),
         ],
@@ -789,13 +738,13 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
 
   Widget _buildErrorCard() {
     final message = _error.toString().replaceFirst('Exception: ', '');
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.errorContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
-      ),
+      color: AppColors.errorContainer,
+      borderColor: AppColors.error.withValues(alpha: 0.25),
+      borderWidth: 1,
+      elevation: 0,
+      borderRadius: BorderRadius.circular(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -806,7 +755,7 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Cannot classify image',
+                  'Could not classify image',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onErrorContainer),
                 ),
                 const SizedBox(height: 4),
@@ -814,12 +763,12 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                   message,
                   style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.onErrorContainer),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 GestureDetector(
                   onTap: _classify,
                   child: const Text(
                     'Try Again',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.error),
                   ),
                 ),
               ],
@@ -830,63 +779,32 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
     );
   }
 
-  // ─── Result ──────────────────────────────────────────────────────
-  Widget _buildResultHeader() {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.successContainer,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.verified_rounded, size: 20, color: AppColors.onSuccessContainer),
-        ),
-        const SizedBox(width: 10),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Classification Result',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-            ),
-            Text(
-              'Here is the recognized waste category',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildResultCard(AiWaste result) {
     final bin = result.bin;
     final bandColor = result.reportedBinColor;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowMedium, blurRadius: 14, offset: const Offset(0, 5)),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+    final categoryData = WasteGuideData.findCategory(result.category);
+
+    return AppCard(
+      padding: EdgeInsets.zero,
+      color: Colors.white,
+      borderColor: AppColors.border,
+      borderWidth: 1,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Color band
+          // Banner with category color gradient
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [bandColor, Color.lerp(bandColor, Colors.black, 0.25)!],
+                colors: [bandColor, Color.lerp(bandColor, Colors.black, 0.28)!],
               ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
@@ -894,15 +812,18 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   child: Center(
-                    child: Text(result.icon.isEmpty ? bin.emoji : result.icon, style: const TextStyle(fontSize: 24)),
+                    child: Text(
+                      result.icon.isEmpty ? bin.emoji : result.icon,
+                      style: const TextStyle(fontSize: 24),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -911,17 +832,21 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                         result.category.isEmpty ? bin.name : result.category,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
+                          letterSpacing: -0.3,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Dispose in ${bin.name}',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.9)),
+                        'Deposit in ${bin.name}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -931,14 +856,14 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
               ],
             ),
           ),
-          // Body
+
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  result.name.isEmpty ? 'Recognized Waste' : result.name,
+                  result.name.isEmpty ? 'Detected Item' : result.name,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -949,17 +874,18 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 14),
-                // Confidence
+
+                // Confidence Bar
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'AI Confidence',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                     ),
-                    const Spacer(),
                     Text(
                       '${result.confidencePercent}%',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: bandColor),
                     ),
                   ],
                 ),
@@ -968,22 +894,28 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                   borderRadius: BorderRadius.circular(99),
                   child: LinearProgressIndicator(
                     value: result.confidence.clamp(0.0, 1.0),
-                    minHeight: 6,
+                    minHeight: 7,
                     backgroundColor: AppColors.surfaceContainer,
                     valueColor: AlwaysStoppedAnimation<Color>(bandColor),
                   ),
                 ),
                 const SizedBox(height: 14),
-                // Recyclable chip + bin chip
+
+                // Tags
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: result.recyclable ? AppColors.successContainer : AppColors.errorContainer,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: result.recyclable
+                              ? AppColors.success.withValues(alpha: 0.3)
+                              : AppColors.error.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1009,7 +941,8 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: bin.container,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: bin.color.withValues(alpha: 0.25)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1017,7 +950,7 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                           Icon(bin.icon, size: 13, color: bin.color),
                           const SizedBox(width: 4),
                           Text(
-                            'Deposit in ${bin.name}',
+                            bin.name,
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: bin.color),
                           ),
                         ],
@@ -1025,9 +958,54 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
 
-                // Save to Waste Guide Action Button
+                // Guidance Box
+                if (categoryData != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.tips_and_updates_rounded, size: 14, color: bandColor),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Disposal Guidance',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          categoryData.properDisposal,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            height: 1.45,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 18),
+
+                // Actions: Save to Guide & Reset
                 ListenableBuilder(
                   listenable: WasteGuideController.instance,
                   builder: (context, _) {
@@ -1037,63 +1015,41 @@ class _AiWasteInputScreenState extends State<AiWasteInputScreen> {
                     return SizedBox(
                       width: double.infinity,
                       height: 46,
-                      child: ElevatedButton.icon(
+                      child: WiseButton(
+                        label: alreadySaved ? 'Saved to Waste Guide ($savedCount)' : 'Save to Waste Guide',
+                        icon: alreadySaved ? Icons.bookmark_rounded : Icons.bookmark_add_rounded,
                         onPressed: () async {
                           final bytes = _imageBytes;
                           final name = _imageName;
                           if (bytes == null || name == null) return;
+                          final mainScope = MainScreenScope.of(context);
                           await WasteGuideController.instance
                               .saveAiResult(result, imageBytes: bytes, imageName: name);
                           if (!mounted) return;
                           _snack('Saved ${result.category} guide!');
-                          // Navigate to Waste Guide tab (index 2) then switch to Saved sub-tab
                           WasteGuideController.instance
                               .setSelectedCategory(result.category);
-                          MainScreenScope.of(context)?.selectTab(2);
+                          mainScope?.selectTab(2);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: alreadySaved
-                              ? AppColors.successContainer
-                              : AppColors.primary,
-                          foregroundColor: alreadySaved
-                              ? AppColors.onSuccessContainer
-                              : Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        icon: Icon(
-                          alreadySaved
-                              ? Icons.bookmark_rounded
-                              : Icons.bookmark_add_rounded,
-                          size: 16,
-                        ),
-                        label: Text(
-                          alreadySaved ? 'Save Another ($savedCount saved)' : 'Save Guide',
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
+                        backgroundColor: alreadySaved
+                            ? AppColors.successContainer
+                            : AppColors.primary,
+                        foregroundColor: alreadySaved
+                            ? AppColors.onSuccessContainer
+                            : Colors.white,
+                        fullWidth: true,
                       ),
                     );
                   },
                 ),
-
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
-                  height: 40,
-                  child: TextButton.icon(
+                  height: 42,
+                  child: WiseTextButton(
+                    label: 'Scan Another Waste Item',
                     onPressed: _reset,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                    ),
-                    icon: const Icon(Icons.add_a_photo_rounded, size: 16),
-                    label: const Text(
-                      'Classify Another Waste',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],

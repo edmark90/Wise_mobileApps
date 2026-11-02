@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../core/constants.dart';
 
 /// The citizen's notification preferences + preferred location subscription.
@@ -29,17 +31,46 @@ class NotificationSettings {
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
     bool flag(String key, bool fallback) {
       final v = json[key];
-      return v == null ? fallback : (v == true || v == 1 || v == '1' || v == 'true');
+      return v == null
+          ? fallback
+          : (v == true || v == 1 || v == '1' || v == 'true');
     }
 
-    List<String> barangays(List<dynamic>? raw) {
-      if (raw == null) return const [];
-      return raw.map((e) => e.toString()).toList();
+    List<String> parseBarangays(dynamic raw) {
+      if (raw == null) return AppConstants.barangays;
+      if (raw is List) {
+        return raw
+            .map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      if (raw is String) {
+        final trimmed = raw.trim();
+        if (trimmed.isEmpty) return const [];
+        try {
+          final decoded = jsonDecode(trimmed);
+          if (decoded is List) {
+            return decoded
+                .map((e) => e.toString().trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+          }
+        } catch (_) {
+          // Fallback to comma-separated string
+        }
+        return trimmed
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      return AppConstants.barangays;
     }
 
-    final rawBarangays = json['preferred_barangays'];
-    final barangayList = rawBarangays is List ? barangays(rawBarangays) : const <String>[];
-    final effectiveBarangays = barangayList.isEmpty ? AppConstants.barangays : barangayList;
+    final hasKey = json.containsKey('preferred_barangays');
+    final parsedBarangays = hasKey
+        ? parseBarangays(json['preferred_barangays'])
+        : AppConstants.barangays;
 
     return NotificationSettings(
       collectionUpdates: flag('notif_collection_updates', true),
@@ -48,7 +79,7 @@ class NotificationSettings {
       emergencyAlerts: flag('notif_emergency_alerts', true),
       reminders: flag('notif_reminders', true),
       completedCollection: flag('notif_completed_collection', true),
-      preferredBarangays: effectiveBarangays,
+      preferredBarangays: parsedBarangays,
     );
   }
 

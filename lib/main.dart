@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'controllers/auth_controller.dart';
 import 'core/config/app_config.dart';
+import 'design_system/app_theme.dart';
 import 'screens/Login.dart';
 import 'screens/MainScreen.dart';
-
-import 'package:flutter/services.dart';
 
 // Global navigator key for deep linking from push notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -31,11 +31,7 @@ class WasteWiseApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'WasteWise',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        primaryColor: AppColors.primary,
-        fontFamily: 'Roboto',
-      ),
+      theme: WiseTheme.light,
       routes: {
         '/home': (_) => const _HomeScreen(),
         '/login': (_) => const LoginScreen(),

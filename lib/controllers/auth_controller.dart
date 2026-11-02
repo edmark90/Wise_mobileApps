@@ -26,6 +26,7 @@ class AuthController extends ChangeNotifier {
 
   String? get userName => _session?['fullname'];
   String? get userEmail => _session?['email'];
+  String? get userBarangay => _session?['barangay'];
 
   /// Restore a previously saved session at app launch.
   ///
@@ -65,6 +66,7 @@ class AuthController extends ChangeNotifier {
         'fullname': (result.user['fullname'] ?? '').toString(),
         'email': (result.user['email'] ?? '').toString(),
         'role': (result.user['role'] ?? 'citizen').toString(),
+        'barangay': (result.user['barangay'] ?? '').toString(),
       };
       unawaited(PushNotificationService.instance.registerAfterLogin());
       return result;
@@ -80,6 +82,7 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String password,
     String? phone,
+    String? barangay,
   }) async {
     _busy = true;
     notifyListeners();
@@ -89,12 +92,14 @@ class AuthController extends ChangeNotifier {
         email: email,
         password: password,
         phone: phone,
+        barangay: barangay,
       );
       await AuthService.instance.saveSession(result.token, result.user);
       _session = {
         'fullname': (result.user['fullname'] ?? '').toString(),
         'email': (result.user['email'] ?? '').toString(),
         'role': (result.user['role'] ?? 'citizen').toString(),
+        'barangay': (result.user['barangay'] ?? '').toString(),
       };
       unawaited(PushNotificationService.instance.registerAfterLogin());
       return result;

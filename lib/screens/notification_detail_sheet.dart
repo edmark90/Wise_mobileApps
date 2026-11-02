@@ -26,7 +26,7 @@ class NotificationDetailSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: AppColors.borderStrong,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -35,50 +35,66 @@ class NotificationDetailSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _typeBadge(notification),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _typeBadge(notification),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        color: AppColors.textTertiary,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     notification.title,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.schedule_rounded, size: 15, color: Colors.grey[500]),
-                      const SizedBox(width: 6),
+                      const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textTertiary),
+                      const SizedBox(width: 5),
                       Text(
                         notification.fullDate,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                   const SizedBox(height: 18),
-                  _section('Message'),
+                  _section('MESSAGE'),
                   _valueBox(notification.message),
                   if (notification.routeName.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _section('Route'),
+                    _section('COLLECTION ROUTE'),
                     _valueBox(notification.routeName),
                   ],
                   if (notification.barangayList.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _section('Affected Barangays'),
+                    _section('AFFECTED BARANGAYS'),
                     _wrapChips(notification.barangayList),
                   ],
                   if (notification.reason.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _section('Reason'),
+                    _section('REASON / ADVISORY DETAILS'),
                     _valueBox(notification.reason),
                   ],
                   if (notification.additionalMessage.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _section('Additional Message'),
+                    _section('ADDITIONAL GUIDELINES'),
                     _valueBox(notification.additionalMessage),
                   ],
                   if (notification.collectionDate.isNotEmpty ||
                       notification.collectionTime.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _section('Collection Schedule'),
+                    _section('COLLECTION SCHEDULE'),
                     _valueBox(
                       [
                         if (notification.collectionDate.isNotEmpty) notification.collectionDate,
@@ -101,15 +117,16 @@ class NotificationDetailSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: n.typeBgColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: n.typeColor.withValues(alpha: 0.25), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(n.icon, size: 15, color: n.typeColor),
+          Icon(n.icon, size: 14, color: n.typeColor),
           const SizedBox(width: 6),
           Text(
             n.notificationType,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: n.typeColor),
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: n.typeColor),
           ),
         ],
       ),
@@ -122,10 +139,10 @@ class NotificationDetailSheet extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-          color: Color(0xFF9CA3AF),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: AppColors.textTertiary,
         ),
       ),
     );
@@ -136,32 +153,33 @@ class NotificationDetailSheet extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEFEFEF)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         value,
-        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        style: const TextStyle(fontSize: 13.5, color: AppColors.textPrimary, height: 1.45),
       ),
     );
   }
 
   Widget _wrapChips(List<String> items) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 6,
+      runSpacing: 6,
       children: items
           .map(
             (b) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.lightBg,
+                color: AppColors.primaryContainer,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Text(
                 b,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary),
               ),
             ),
           )

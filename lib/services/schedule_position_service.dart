@@ -78,6 +78,17 @@ class SchedulePositionService {
       );
     }
 
+    if (route.status == 'Completed') {
+      final lastStopIdx = route.stops.length - 1;
+      final lastCoord = _coordinateAtOrBefore(route, lastStopIdx) ?? depot;
+      return SchedulePosition(
+        phase: SchedulePhase.completed,
+        stopIndex: lastStopIdx,
+        coordinate: lastCoord,
+        detail: 'Completed at ${route.stops[lastStopIdx].placeName}.',
+      );
+    }
+
     final date = _parseDate(route.collectionDate);
     if (date == null) {
       return SchedulePosition(

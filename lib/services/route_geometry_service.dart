@@ -66,7 +66,11 @@ class RouteGeometryService {
           if (data is Map) {
             final savedRoute =
                 ScheduleRoute.fromJson(data.cast<String, dynamic>());
-            return _resegmentIfNeeded(savedRoute) ?? savedRoute;
+            final segmented = _resegmentIfNeeded(savedRoute) ?? savedRoute;
+            if (segmented.isSegmented && segmented.geometry.length >= 2) {
+              return segmented;
+            }
+            return _recoverGeometryForSavedRoute(segmented, resolvedSchedule);
           }
         } else if (response.statusCode == 404 || response.statusCode == 405) {
           _savedGeometryEndpointMissing = true;
@@ -114,8 +118,130 @@ class RouteGeometryService {
       isSegmented: true,
       distanceMeters: savedRoute.distanceMeters,
       durationSeconds: savedRoute.durationSeconds,
-      message: savedRoute.message,
+      message: null,
       warnings: savedRoute.warnings,
+    );
+  }
+
+  /// Recovers road geometry via the public OSRM router when the backend's
+  /// `/routing/schedule-geometry` returns a route without road geometry
+  /// (e.g., when the backend's local OSRM container returns `[Errno 111] Connection refused`).
+  Future<ScheduleRoute> _recoverGeometryForSavedRoute(
+    ScheduleRoute savedRoute,
+    CollectionSchedule? fallbackSchedule,
+  ) async {
+    List<RouteStopPoint> stops;
+    if (savedRoute.stops.isNotEmpty) {
+      var waypointCount = 0;
+      stops = <RouteStopPoint>[];
+      for (var i = 0; i < savedRoute.stops.length; i++) {
+        final s = savedRoute.stops[i];
+        var pos = s.position;
+        var exact = s.isExact;
+        if (pos == null) {
+          final resolved = MuntinlupaGeocoding.resolve(
+            barangay: s.barangay,
+            street: s.street,
+          );
+          pos = resolved?.position;
+          exact = resolved?.isExact ?? false;
+        }
+        stops.add(
+          RouteStopPoint(
+            id: s.id,
+            barangay: s.barangay,
+            street: s.street,
+            sequence: s.sequence > 0 ? s.sequence : (i + 1),
+            collectionTime: s.collectionTime.isNotEmpty
+                ? s.collectionTime
+                : savedRoute.collectionTime,
+            status: s.status.isNotEmpty ? s.status : savedRoute.status,
+            position: pos,
+            isExact: exact,
+            waypointIndex: pos == null ? null : ++waypointCount,
+          ),
+        );
+      }
+    } else if (fallbackSchedule != null) {
+      stops = _resolveStops(fallbackSchedule);
+    } else {
+      stops = const <RouteStopPoint>[];
+    }
+
+    final waypoints = _waypoints(savedRoute.depot.position, stops);
+    var geometry = savedRoute.geometry;
+    var legs = savedRoute.legs;
+    var isSegmented = savedRoute.isSegmented;
+    var distanceMeters = savedRoute.distanceMeters;
+    var durationSeconds = savedRoute.durationSeconds;
+
+    if (waypoints.length >= 2) {
+      final cacheKey =
+          waypoints.map((p) => '${p.latitude},${p.longitude}').join('|');
+      final cached = _geometryCache[cacheKey];
+
+      if (cached != null) {
+        geometry = cached.geometry;
+        legs = cached.legs;
+        isSegmented = cached.isSegmented;
+        distanceMeters = cached.distanceMeters;
+        durationSeconds = cached.durationSeconds;
+      } else {
+        final road = await _fetchOsrmRoute(waypoints);
+        if (road != null) {
+          geometry = road.geometry;
+          legs = road.legs;
+          isSegmented = true;
+          distanceMeters = road.distanceMeters;
+          durationSeconds = road.durationSeconds;
+          _geometryCache[cacheKey] = _CachedGeometry(
+            geometry: geometry,
+            legs: legs,
+            isSegmented: true,
+            distanceMeters: distanceMeters,
+            durationSeconds: durationSeconds,
+          );
+        }
+      }
+
+      if (legs.isEmpty) {
+        legs = buildStraightLegs(waypoints);
+        geometry = legs.expand((leg) => leg).toList();
+        isSegmented = true;
+      }
+
+      if (distanceMeters == null) {
+        const distanceCalc = Distance();
+        var total = 0.0;
+        for (var i = 0; i < waypoints.length - 1; i++) {
+          total += distanceCalc.as(
+            LengthUnit.Meter,
+            waypoints[i],
+            waypoints[i + 1],
+          );
+        }
+        distanceMeters = total.round();
+        durationSeconds = (total / (25000 / 3600) + stops.length * 480).round();
+      }
+    }
+
+    return ScheduleRoute(
+      scheduleId: savedRoute.scheduleId,
+      truckNumber: savedRoute.truckNumber,
+      routeName: savedRoute.routeName,
+      startingPoint: savedRoute.startingPoint,
+      collectionDate: savedRoute.collectionDate,
+      collectionTime: savedRoute.collectionTime,
+      status: savedRoute.status,
+      depot: savedRoute.depot,
+      stops: stops,
+      geometry: geometry,
+      legs: legs,
+      isSegmented: isSegmented,
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+      message: null,
+      warnings: _stopWarnings(stops),
     );
   }
 

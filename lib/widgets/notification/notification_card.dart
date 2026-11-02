@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../design_system/widgets/app_card.dart';
 import '../../models/app_notification.dart';
 
 /// A single row in the notification inbox.
@@ -13,96 +14,91 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unread = !notification.isRead;
-    return InkWell(
+
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      color: unread ? const Color(0xFFF8FAFC) : Colors.white,
+      borderColor: unread ? AppColors.primary.withValues(alpha: 0.25) : AppColors.border,
+      borderWidth: 1,
+      elevation: unread ? 1.5 : 0.5,
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: unread ? const Color(0xFFF8FAFF) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: unread ? const Color(0xFFD6E4FF) : const Color(0xFFEEEEEE),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: notification.typeBgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(notification.icon, color: notification.typeColor, size: 20),
           ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: notification.typeBgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(notification.icon, color: notification.typeColor, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          notification.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      if (unread)
-                        Container(
-                          width: 9,
-                          height: 9,
-                          margin: const EdgeInsets.only(left: 8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    notification.message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      height: 1.35,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.schedule_rounded, size: 13, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
-                      Text(
-                        notification.formattedTime,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    if (unread)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.only(left: 6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                      const Spacer(),
-                      if (notification.priority == 'Emergency')
-                        _priorityTag('EMERGENCY', const Color(0xFFB91C1C), const Color(0xFFFEE2E2))
-                      else if (notification.priority == 'Important')
-                        _priorityTag('IMPORTANT', const Color(0xFF92400E), const Color(0xFFFEF3C7))
-                      else
-                        _priorityTag('NORMAL', const Color(0xFF15803D), const Color(0xFFF0FDF4)),
-                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  notification.message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, size: 12, color: AppColors.textTertiary),
+                    const SizedBox(width: 4),
+                    Text(
+                      notification.formattedTime,
+                      style: const TextStyle(fontSize: 11, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
+                    ),
+                    const Spacer(),
+                    if (notification.priority == 'Emergency')
+                      _priorityTag('EMERGENCY', const Color(0xFFB91C1C), const Color(0xFFFEE2E2))
+                    else if (notification.priority == 'Important')
+                      _priorityTag('IMPORTANT', const Color(0xFF92400E), const Color(0xFFFEF3C7))
+                    else
+                      _priorityTag('NORMAL', const Color(0xFF15803D), const Color(0xFFF0FDF4)),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -113,11 +109,12 @@ class NotificationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.8),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 9.5,
+          fontSize: 9,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.4,
           color: color,

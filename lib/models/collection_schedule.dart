@@ -1,5 +1,82 @@
 import 'dart:ui' show Color;
 
+/// Normalizes any backend or notification status string into one of the
+/// canonical schedule statuses:
+/// `'Upcoming'`, `'Arriving'`, `'Arrived'`, `'Delayed'`, `'Completed'`, `'Cancelled'`.
+String normalizeScheduleStatus(String raw) {
+  final lower = raw.trim().toLowerCase();
+  switch (lower) {
+    case 'upcoming':
+    case 'scheduled':
+    case 'pending':
+      return 'Upcoming';
+    case 'arriving':
+    case 'on the way':
+    case 'en route':
+    case 'approaching':
+      return 'Arriving';
+    case 'arrived':
+    case 'ongoing':
+    case 'in progress':
+    case 'at stop':
+    case 'active':
+      return 'Arrived';
+    case 'completed':
+    case 'complete':
+    case 'done':
+    case 'finished':
+      return 'Completed';
+    case 'delayed':
+    case 'rescheduled':
+      return 'Delayed';
+    case 'cancelled':
+    case 'canceled':
+      return 'Cancelled';
+    default:
+      return raw.trim().isEmpty ? 'Upcoming' : raw.trim();
+  }
+}
+
+/// Foreground text/icon color for a schedule or stop status.
+Color scheduleStatusColor(String status) {
+  switch (normalizeScheduleStatus(status)) {
+    case 'Upcoming':
+      return const Color(0xFF1E40AF);
+    case 'Arriving':
+      return const Color(0xFF92400E);
+    case 'Arrived':
+      return const Color(0xFF0F766E);
+    case 'Delayed':
+      return const Color(0xFF991B1B);
+    case 'Completed':
+      return const Color(0xFF15803D);
+    case 'Cancelled':
+      return const Color(0xFF4B5563);
+    default:
+      return const Color(0xFF6B7280);
+  }
+}
+
+/// Background pill color for a schedule or stop status.
+Color scheduleStatusBgColor(String status) {
+  switch (normalizeScheduleStatus(status)) {
+    case 'Upcoming':
+      return const Color(0xFFEFF6FF);
+    case 'Arriving':
+      return const Color(0xFFFEF3C7);
+    case 'Arrived':
+      return const Color(0xFFCCFBF1);
+    case 'Delayed':
+      return const Color(0xFFFEF2F2);
+    case 'Completed':
+      return const Color(0xFFDCFCE7);
+    case 'Cancelled':
+      return const Color(0xFFF3F4F6);
+    default:
+      return const Color(0xFFF3F4F6);
+  }
+}
+
 /// A single collection stop inside a truck's collection assignment with its own collection time.
 class CollectionStop {
   final int id;
@@ -30,7 +107,7 @@ class CollectionStop {
       street: json['street'] ?? '',
       sequence: json['sequence'] ?? 1,
       collectionTime: json['collection_time'] ?? '',
-      status: json['status'] ?? 'Upcoming',
+      status: normalizeScheduleStatus((json['status'] ?? 'Upcoming').toString()),
       remarks: json['remarks'],
     );
   }
@@ -54,7 +131,7 @@ class CollectionStop {
     final m = parts[1];
     final ampm = h >= 12 ? 'PM' : 'AM';
     final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '${h12}:${m} ${ampm}';
+    return '$h12:$m $ampm';
   }
 }
 
@@ -104,7 +181,7 @@ class CollectionSchedule {
       truckNumber: json['truck_number'] ?? json['truck'] ?? '',
       routeName: json['route_name'] ?? json['route'],
       startingPoint: json['starting_point'],
-      status: json['status'] ?? 'Upcoming',
+      status: normalizeScheduleStatus((json['status'] ?? 'Upcoming').toString()),
       remarks: json['remarks'],
       stops: parsedStops,
     );
@@ -125,6 +202,60 @@ class CollectionSchedule {
         'stops': stops.map((s) => s.toJson()).toList(),
       };
 
+  /// Clean, concise route name without start/end stop chains.
+  String get displayRouteName {
+    final fallbackBarangay = barangay.trim().isNotEmpty
+        ? barangay.trim()
+        : (stops.isNotEmpty && stops.first.barangay.trim().isNotEmpty
+            ? stops.first.barangay.trim()
+            : 'Collection');
+    final fallback = '$fallbackBarangay Route';
+
+    var raw = (routeName ?? '').trim();
+    if (raw.isEmpty) return fallback;
+
+    // Remove parenthetical or bracketed start/end descriptions
+    raw = raw.replaceAll(RegExp(r'\s*\([^)]*\)\s*'), ' ').trim();
+    raw = raw.replaceAll(RegExp(r'\s*\[[^\]]*\]\s*'), ' ').trim();
+
+    // If formatted like "Route 1: Start -> End", keep the route title before ':'
+    if (raw.contains(':')) {
+      final prefix = raw.split(':').first.trim();
+      if (prefix.isNotEmpty &&
+          !prefix.toLowerCase().startsWith('start') &&
+          !prefix.toLowerCase().startsWith('from')) {
+        raw = prefix;
+      }
+    }
+
+    // If the string is a start-to-end chain (arrows or "to" or multiple dashes)
+    final hasChain = raw.contains('→') ||
+        raw.contains('->') ||
+        raw.contains('—') ||
+        RegExp(r'\b(start|end|from|to)\b', caseSensitive: false).hasMatch(raw);
+
+    if (hasChain) {
+      final firstPart = raw.split(RegExp(r'→|->|—|\s+-\s+|\s+to\s+', caseSensitive: false)).first.trim();
+      if (firstPart.toLowerCase().contains('route')) {
+        return firstPart;
+      }
+      return fallback;
+    }
+
+    // Also handle "Barangay A - Barangay B" start-end style when 'route' is not in the string
+    if (raw.contains(' - ')) {
+      final parts = raw.split(' - ').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+      if (parts.length >= 2) {
+        if (parts.first.toLowerCase().contains('route')) {
+          return parts.first;
+        }
+        return fallback;
+      }
+    }
+
+    return raw.isNotEmpty ? raw : fallback;
+  }
+
   String get formattedTime {
     if (collectionTime.isEmpty) return '';
     final parts = collectionTime.split(':');
@@ -133,7 +264,7 @@ class CollectionSchedule {
     final m = parts[1];
     final ampm = h >= 12 ? 'PM' : 'AM';
     final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '${h12}:${m} ${ampm}';
+    return '$h12:$m $ampm';
   }
 
   String get formattedDate {
@@ -148,27 +279,7 @@ class CollectionSchedule {
     }
   }
 
-  Color get statusColor {
-    switch (status) {
-      case 'Upcoming': return const Color(0xFF1E40AF);
-      case 'Arriving': return const Color(0xFF92400E);
-      case 'Arrived': return const Color(0xFF166534);
-      case 'Delayed': return const Color(0xFF991B1B);
-      case 'Completed': return const Color(0xFF15803D);
-      case 'Cancelled': return const Color(0xFF4B5563);
-      default: return const Color(0xFF6B7280);
-    }
-  }
+  Color get statusColor => scheduleStatusColor(status);
 
-  Color get statusBgColor {
-    switch (status) {
-      case 'Upcoming': return const Color(0xFFEFF6FF);
-      case 'Arriving': return const Color(0xFFFEF3C7);
-      case 'Arrived': return const Color(0xFFF0FDF4);
-      case 'Delayed': return const Color(0xFFFEF2F2);
-      case 'Completed': return const Color(0xFFF0FDF4);
-      case 'Cancelled': return const Color(0xFFF3F4F6);
-      default: return const Color(0xFFF3F4F6);
-    }
-  }
+  Color get statusBgColor => scheduleStatusBgColor(status);
 }

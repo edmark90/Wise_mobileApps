@@ -21,54 +21,77 @@ class BarangayFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     if (allBarangays.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.filter_alt_rounded, size: 14, color: Colors.grey[600]),
-              const SizedBox(width: 6),
-              Text(
-                selected.isEmpty ? 'Select barangay' : '${selected.length} selected',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.tune_rounded, size: 14, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              selected.isEmpty ? 'Filter by Barangay' : '${selected.length} barangay${selected.length > 1 ? 's' : ''} filtered',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
-              if (selected.isNotEmpty) ...[
-                const Spacer(),
-                GestureDetector(
-                  onTap: onClear,
-                  child: Text(
-                    'Clear',
+            ),
+            if (selected.isNotEmpty) ...[
+              const Spacer(),
+              GestureDetector(
+                onTap: onClear,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Reset Filter',
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primary,
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
-              ],
+              ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: allBarangays.map((brgy) {
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: allBarangays.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final brgy = allBarangays[index];
               final isSelected = selected.contains(brgy);
+
               return GestureDetector(
                 onTap: () => onToggle(brgy),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : const Color(0xFFD1D5DB),
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                      width: 1,
                     ),
                     boxShadow: isSelected
-                        ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 1))]
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
                         : null,
                   ),
                   child: Row(
@@ -77,24 +100,24 @@ class BarangayFilter extends StatelessWidget {
                       if (isSelected)
                         const Padding(
                           padding: EdgeInsets.only(right: 5),
-                          child: Icon(Icons.check, size: 12, color: Colors.white),
+                          child: Icon(Icons.check_rounded, size: 13, color: Colors.white),
                         ),
                       Text(
                         brgy,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? Colors.white : Colors.grey[800],
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? Colors.white : AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

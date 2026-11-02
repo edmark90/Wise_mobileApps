@@ -13,6 +13,7 @@ class AuthService {
   static const String _kUserFullnameKey = 'auth_user_fullname';
   static const String _kUserEmailKey = 'auth_user_email';
   static const String _kUserRoleKey = 'auth_user_role';
+  static const String _kUserBarangayKey = 'auth_user_barangay';
 
   Future<AuthResult> login(String email, String password) async {
     final response = await ApiClient.instance.post('/auth/login', body: {
@@ -30,12 +31,14 @@ class AuthService {
     required String email,
     required String password,
     String? phone,
+    String? barangay,
   }) async {
     final body = <String, dynamic>{
       'fullname': fullname,
       'email': email,
       'password': password,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (barangay != null && barangay.isNotEmpty) 'barangay': barangay,
     };
     final response = await ApiClient.instance.post('/auth/signup', body: body);
     final data = ApiClient.instance.decode(response, expectedStatus: 201);
@@ -52,6 +55,7 @@ class AuthService {
     await prefs.setString(_kUserFullnameKey, (user['fullname'] ?? '').toString());
     await prefs.setString(_kUserEmailKey, (user['email'] ?? '').toString());
     await prefs.setString(_kUserRoleKey, (user['role'] ?? 'citizen').toString());
+    await prefs.setString(_kUserBarangayKey, (user['barangay'] ?? '').toString());
   }
 
   /// Restore a previously saved session. Returns `null` when there is none.
@@ -65,6 +69,7 @@ class AuthService {
       'fullname': prefs.getString(_kUserFullnameKey) ?? '',
       'email': prefs.getString(_kUserEmailKey) ?? '',
       'role': prefs.getString(_kUserRoleKey) ?? 'citizen',
+      'barangay': prefs.getString(_kUserBarangayKey) ?? '',
     };
   }
 
@@ -75,6 +80,7 @@ class AuthService {
     await prefs.remove(_kUserFullnameKey);
     await prefs.remove(_kUserEmailKey);
     await prefs.remove(_kUserRoleKey);
+    await prefs.remove(_kUserBarangayKey);
     ApiClient.instance.setToken(null);
   }
 

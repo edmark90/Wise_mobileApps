@@ -460,25 +460,7 @@ class _TruckRouteSectionState extends State<TruckRouteSection> {
         ),
         const SizedBox(height: 10),
         _positionPanel(route, position),
-        if (!route.isSegmented &&
-            route.hasGeometry &&
-            (route.message == null || route.message!.isEmpty)) ...[
-          const SizedBox(height: 8),
-          _noteCard(
-            icon: Icons.alt_route_rounded,
-            color: AppColors.warning,
-            text:
-                'Road geometry could not be matched to every stop. The dashed line is an approximate route.',
-          ),
-        ],
-        if (route.message != null && route.message!.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          _noteCard(
-            icon: Icons.cloud_off_rounded,
-            color: AppColors.warning,
-            text: route.message!,
-          ),
-        ] else if (route.warnings.isNotEmpty) ...[
+        if (route.warnings.isNotEmpty) ...[
           const SizedBox(height: 8),
           _noteCard(
             icon: Icons.info_outline_rounded,

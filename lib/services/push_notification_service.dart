@@ -9,10 +9,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../controllers/notification_controller.dart';
-import '../controllers/update_controller.dart';
+import '../controllers/notification_settings_controller.dart';
+import '../controllers/schedule_controller.dart';
 import '../core/network/api_client.dart';
-import '../main.dart';
-import '../screens/update_dialog.dart';
+import '../models/app_notification.dart';
 import 'notification_service.dart';
 
 @pragma('vm:entry-point')
@@ -99,62 +99,10 @@ class PushNotificationService {
 
     debugPrint('[Push] received type=${message.data['type']}, background=$background, openApp=$openApp');
 
-    // Handle app_update type messages
-    if (message.data['type'] == 'app_update') {
-      final reminder = message.data['reminder'] as String?;
-      final pushVersionCode = int.tryParse(message.data['version_code']?.toString() ?? '0') ?? 0;
-
-      // Skip entirely if version already installed — no dialog, no notification
-      if (pushVersionCode > 0 && pushVersionCode <= UpdateController.instance.installedVersionCode) {
-        debugPrint('[Push] app_update v$pushVersionCode already installed — skipping');
-        unawaited(NotificationController.instance.load(force: true));
-        return;
-      }
-
-      // "Next App Open" — only save data, don't show dialog now
-      if (reminder == 'Next App Open') {
-        UpdateController.instance.setFromPush(message.data);
-        if (!background) {
-          final title = message.notification?.title ?? message.data['title'] ?? 'App Update Available';
-          final body = message.notification?.body ?? message.data['message'] ?? 'A new version is available. Open the app to update.';
-          await _showLocalNotification(title, body, message.messageId);
-        }
-        unawaited(NotificationController.instance.load(force: true));
-        if (openApp) _openNotificationScreen();
-        return;
-      }
-
-      // All other reminders (None, 10min, 30min, 1hr, Daily) — show dialog now
-      UpdateController.instance.setFromPush(message.data);
-
-      // If _latest is null after setFromPush, the push was invalid
-      if (UpdateController.instance.latest == null) {
-        debugPrint('[Push] app_update ignored — version already installed or invalid');
-        unawaited(NotificationController.instance.load(force: true));
-        if (openApp) _openNotificationScreen();
-        return;
-      }
-
-      if (!background) {
-        final title = message.notification?.title ?? message.data['title'] ?? 'App Update Available';
-        final body = message.notification?.body ?? message.data['message'] ?? 'A new version is available';
-        await _showLocalNotification(title, body, message.messageId);
-      }
-
-      unawaited(NotificationController.instance.load(force: true));
-
-      final context = navigatorKey.currentContext;
-      if (context != null && UpdateController.instance.shouldPrompt && UpdateController.instance.latest != null) {
-        showUpdateDialog(context, UpdateController.instance.latest!);
-      }
-
-      if (openApp) _openNotificationScreen();
-      return;
-    }
-
-    // Non-app_update: refresh inbox
+    // Refresh inbox and collection schedules in real time
     if (!background) {
       unawaited(NotificationController.instance.load(force: true));
+      unawaited(ScheduleController.instance.load(force: true));
     }
 
     if (openApp) {
@@ -165,9 +113,43 @@ class PushNotificationService {
       return;
     }
 
+    // Ensure notification settings are loaded before checking barangay/channel filters
+    if (NotificationSettingsController.instance.settings == null &&
+        !NotificationSettingsController.instance.loading) {
+      await NotificationSettingsController.instance.load();
+    }
+
+    final title = message.notification?.title ??
+        message.data['title']?.toString() ??
+        'WasteWise';
+    final body = message.notification?.body ??
+        message.data['message']?.toString() ??
+        'New notification';
+    final notifType = message.data['notification_type']?.toString() ??
+        message.data['type']?.toString() ??
+        'General Announcement';
+
+    final candidate = AppNotification(
+      id: 0,
+      title: title,
+      message: body,
+      notificationType: notifType,
+      category: message.data['category']?.toString() ?? '',
+      priority: message.data['priority']?.toString() ?? 'Normal',
+      routeName: message.data['route_name']?.toString() ?? '',
+      affectedBarangays: message.data['affected_barangays']?.toString() ?? '',
+      reason: message.data['reason']?.toString() ?? '',
+      collectionDate: message.data['collection_date']?.toString() ?? '',
+      collectionTime: message.data['collection_time']?.toString() ?? '',
+      isRead: false,
+    );
+
+    if (!NotificationController.instance.matchesUserPreferences(candidate)) {
+      debugPrint('[Push] filtered out by user barangay/channel preferences');
+      return;
+    }
+
     // Show heads-up local notification for regular notifications
-    final title = message.notification?.title ?? 'WasteWise';
-    final body = message.notification?.body ?? message.data['message'] ?? 'New notification';
     await _showLocalNotification(title, body, message.messageId);
   }
 

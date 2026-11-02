@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../design_system/widgets/app_card.dart';
 import '../../models/collection_schedule.dart';
 import '../../services/route_color_service.dart';
+import 'status_timeline.dart';
 
 /// Single collection route assignment card with a timeline bar, truck identification, and stops.
 class ScheduleCard extends StatelessWidget {
@@ -22,180 +24,214 @@ class ScheduleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final routeColor = RouteColorService.getColorForSchedule(schedule).color;
+    final liveStatus = deriveLiveStatus(schedule);
+    final statusColor = scheduleStatusColor(liveStatus);
+    final statusBgColor = scheduleStatusBgColor(liveStatus);
     final isFirst = cardIndex == 0;
-    final isLast = cardIndex == totalInGroup - 1;
     final hasStops = schedule.stops.isNotEmpty;
     final stopsCount = hasStops ? schedule.stops.length : 1;
+    final timeParts = schedule.formattedTime.split(' ');
+    final timeStr = timeParts.isNotEmpty ? timeParts.first : '';
+    final ampmStr = timeParts.length > 1 ? timeParts.last : '';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        color: Colors.white,
+        borderColor: isFirst ? routeColor.withValues(alpha: 0.3) : AppColors.border,
+        borderWidth: 1,
+        elevation: 1,
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isFirst ? routeColor.withValues(alpha: 0.25) : const Color(0xFFE5E7EB),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isFirst ? routeColor.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Left timeline bar with route color
-                Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        routeColor,
-                        routeColor.withValues(alpha: 0.65),
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Time column
-                SizedBox(
-                  width: 48,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        schedule.formattedTime.split(' ').first,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                      ),
-                      Text(
-                        schedule.formattedTime.split(' ').length > 1 ? schedule.formattedTime.split(' ').last : '',
-                        style: TextStyle(fontSize: 9, color: Colors.grey[500]),
-                      ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left timeline accent bar
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      routeColor,
+                      routeColor.withValues(alpha: 0.65),
                     ],
                   ),
+                  borderRadius: BorderRadius.circular(99),
                 ),
-                const SizedBox(width: 6),
-                // Vertical divider
-                Container(
-                  width: 1,
-                  height: 38,
-                  color: Colors.grey[200],
-                  margin: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              const SizedBox(width: 12),
+
+              // Time column
+              SizedBox(
+                width: 52,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      timeStr,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (ampmStr.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppColors.border, width: 0.8),
+                        ),
+                        child: Text(
+                          ampmStr,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 10),
-                // Content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                schedule.routeName?.isNotEmpty == true
-                                    ? schedule.routeName!
-                                    : '${schedule.barangay} Route',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+              ),
+
+              // Subtle vertical separator
+              Container(
+                width: 1,
+                color: AppColors.border,
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              ),
+
+              // Main route details
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Route name, Truck & Status
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              schedule.displayRouteName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          if (schedule.truckNumber.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: routeColor.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: routeColor.withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.local_shipping_rounded, size: 11, color: routeColor),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    schedule.truckNumber,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: routeColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 6),
-                            if (schedule.truckNumber.isNotEmpty) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: routeColor.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: routeColor.withValues(alpha: 0.35)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.local_shipping_rounded, size: 10, color: routeColor),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      schedule.truckNumber,
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: routeColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: schedule.statusBgColor,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                schedule.status,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: schedule.statusColor,
-                                ),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: statusBgColor,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: statusColor.withValues(alpha: 0.25),
+                                width: 0.8,
                               ),
                             ),
-                          ],
-                        ),
+                            child: Text(
+                              liveStatus,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Stop location preview
+                      Row(
+                        children: [
+                          const Icon(Icons.pin_drop_rounded, size: 13, color: AppColors.textTertiary),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              hasStops
+                                  ? '$stopsCount Stop${stopsCount > 1 ? 's' : ''}: ${schedule.stops.map((s) => s.barangay + (s.street.isNotEmpty ? " (${s.street})" : "")).join(" • ")}'
+                                  : schedule.barangay + (schedule.zone.isNotEmpty ? ' - ${schedule.zone}' : ''),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                height: 1.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Assigned personnel
+                      if (schedule.assignedPersonnel.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.pin_drop_rounded, size: 12, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.person_outline_rounded, size: 13, color: AppColors.textTertiary),
+                            const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                hasStops
-                                    ? '${stopsCount} Stop${stopsCount > 1 ? 's' : ''}: ${schedule.stops.map((s) => s.barangay + (s.street.isNotEmpty ? " (${s.street})" : "")).join(" • ")}'
-                                    : schedule.barangay + (schedule.zone.isNotEmpty ? ' - ${schedule.zone}' : ''),
-                                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                schedule.assignedPersonnel,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textTertiary,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        if (schedule.assignedPersonnel.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey[400]),
-                              const SizedBox(width: 4),
-                              Text(
-                                schedule.assignedPersonnel,
-                                style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
